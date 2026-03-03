@@ -140,6 +140,8 @@ static async Task SpeelPlaylist(string playlistUri)
                 Scopes.PlaylistReadPrivate 
             }
         };
-        BrowserUtil.Open(request.ToUri());
+      var loginUri = request.ToUri();
+Console.WriteLine("GEBRUIK DEZE LINK OM IN TE LOGGEN:");
+Console.WriteLine(loginUri);
     }
 }

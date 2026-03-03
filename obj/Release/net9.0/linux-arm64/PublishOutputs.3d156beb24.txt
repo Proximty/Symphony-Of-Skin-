@@ -1,0 +1,14 @@
+C:\projecten\Symphony-Of-Skin-\bin\Release\net9.0\linux-arm64\publish\Interactief
+C:\projecten\Symphony-Of-Skin-\bin\Release\net9.0\linux-arm64\publish\Interactief.dll
+C:\projecten\Symphony-Of-Skin-\bin\Release\net9.0\linux-arm64\publish\Interactief.deps.json
+C:\projecten\Symphony-Of-Skin-\bin\Release\net9.0\linux-arm64\publish\Interactief.runtimeconfig.json
+C:\projecten\Symphony-Of-Skin-\bin\Release\net9.0\linux-arm64\publish\Interactief.pdb
+C:\projecten\Symphony-Of-Skin-\bin\Release\net9.0\linux-arm64\publish\CSCore.dll
+C:\projecten\Symphony-Of-Skin-\bin\Release\net9.0\linux-arm64\publish\EmbedIO.dll
+C:\projecten\Symphony-Of-Skin-\bin\Release\net9.0\linux-arm64\publish\Newtonsoft.Json.dll
+C:\projecten\Symphony-Of-Skin-\bin\Release\net9.0\linux-arm64\publish\Raylib-cs.dll
+C:\projecten\Symphony-Of-Skin-\bin\Release\net9.0\linux-arm64\publish\SharpHook.dll
+C:\projecten\Symphony-Of-Skin-\bin\Release\net9.0\linux-arm64\publish\SpotifyAPI.Web.dll
+C:\projecten\Symphony-Of-Skin-\bin\Release\net9.0\linux-arm64\publish\SpotifyAPI.Web.Auth.dll
+C:\projecten\Symphony-Of-Skin-\bin\Release\net9.0\linux-arm64\publish\Swan.Lite.dll
+C:\projecten\Symphony-Of-Skin-\bin\Release\net9.0\linux-arm64\publish\libuiohook.so
