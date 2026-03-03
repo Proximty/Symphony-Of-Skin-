@@ -1,9 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Runtime.InteropServices;
-using Raylib_cs;
 using CSCore.CoreAudioAPI;
-using System.Numerics;
 using SpotifyAPI.Web;
 using SpotifyAPI.Web.Auth;
 using System.Threading.Tasks;
@@ -13,9 +11,8 @@ class Program
 {
     // --- SPOTIFY SETTINGS ---
     private static string clientId = "f135a36b32054ef49aac4c7e27554f85"; 
-    private static string clientSecret = "fd4da5ce69b34becb9dd433c83e8e7dd"; // Let op: Houd deze geheim!
+    private static string clientSecret = "fd4da5ce69b34becb9dd433c83e8e7dd"; 
     private static string credentialsPath = "credentials.json";
-    private static string currentTrackInfo = "Connecting to Spotify...";
     private static SpotifyClient? _spotify;
 
     // --- MEDIA KEYS ---
@@ -28,89 +25,46 @@ class Program
 
     static async Task Main()
     {
-        // Start Spotify op de achtergrond (Standalone mode)
+        Console.WriteLine("Systeem opstarten...");
+
+        // Start Spotify authenticatie
         _ = Task.Run(() => StartSpotify());
 
-        // Kiosk mode optie: Fullscreen zonder muis
-        // Raylib.SetConfigFlags(ConfigFlags.FullscreenMode); 
-        Raylib.InitWindow(1400, 900, "Spotify Sync - Standalone High Impact");
-        Raylib.SetTargetFPS(60);
-
+        // Audio setup (zonder visuals)
         using var enumerator = new MMDeviceEnumerator();
         using var device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
         using var meter = AudioMeterInformation.FromDevice(device);
 
-        float smoothVolume = 0f;
-        float waveTime = 0f;
-        float smoothHue = 240f; 
-        float volumeThreshold = 0f;
-        float autoGain = 1.0f; 
+        Console.WriteLine("Systeem actief. Druk op ESC om te stoppen.");
+        Console.WriteLine("Console luistert nu naar audio levels...");
 
-        while (!Raylib.WindowShouldClose())
+        // Simpele console loop in plaats van een window
+        while (true)
         {
-            if (Raylib.IsKeyPressed(KeyboardKey.Space)) SendMediaKey(VK_MEDIA_PLAY_PAUSE);
-            if (Raylib.IsKeyPressed(KeyboardKey.Up)) SendMediaKey(VK_MEDIA_NEXT_TRACK);
-            if (Raylib.IsKeyPressed(KeyboardKey.Down)) SendMediaKey(VK_MEDIA_PREV_TRACK);
-
-            float peak = meter.PeakValue; 
-
-            // --- VOLUME STABILISATIE ---
-            if (peak > 0.001f) 
+            float peak = meter.PeakValue;
+            
+            // Voorbeeld van output zonder graphics:
+            if (peak > 0.5f) 
             {
-                float targetGain = 0.50f / (peak + 0.01f); 
-                autoGain += (targetGain - autoGain) * 0.015f;
+                Console.WriteLine($"[BEAT DETECTED] Level: {peak:P0}");
             }
-            autoGain = MathF.Max(1.0f, MathF.Min(autoGain, 15.0f));
-            float boostedPeak = MathF.Min(1.3f, peak * autoGain);
-            
-            float targetIntensity = (boostedPeak * 220f) + 15f; 
-            smoothVolume += (targetIntensity - smoothVolume) * 0.20f; 
-            waveTime += 0.04f + (boostedPeak * 0.20f); 
 
-            if (peak > volumeThreshold) volumeThreshold = peak;
-            else volumeThreshold -= 0.005f;
+            // Omdat we geen Raylib.IsKeyPressed meer hebben, kun je Console.KeyAvailable gebruiken
+            if (Console.KeyAvailable)
+            {
+                var key = Console.ReadKey(true).Key;
+                if (key == ConsoleKey.Escape) break;
+                if (key == ConsoleKey.Spacebar) SendMediaKey(VK_MEDIA_PLAY_PAUSE);
+                if (key == ConsoleKey.UpArrow) SendMediaKey(VK_MEDIA_NEXT_TRACK);
+                if (key == ConsoleKey.DownArrow) SendMediaKey(VK_MEDIA_PREV_TRACK);
+            }
 
-            float impact = MathF.Max(0f, peak - (volumeThreshold * 0.82f));
-            float colorTrigger = MathF.Min(1.0f, impact / 0.05f);
-
-            float targetHue = 240f - (colorTrigger * 240f); 
-            float lerpSpeed = (targetHue < smoothHue) ? 0.4f : 0.02f;
-            smoothHue += (targetHue - smoothHue) * lerpSpeed; 
-
-            Color beatColor = Raylib.ColorFromHSV(smoothHue, 0.95f, 1.0f);
-
-            Raylib.BeginDrawing();
-            Raylib.ClearBackground(new Color(5, 5, 12, 255)); 
-
-            DrawGrid(Raylib.GetScreenWidth(), Raylib.GetScreenHeight(), beatColor, boostedPeak);
-
-            Raylib.BeginBlendMode(BlendMode.Additive);
-            
-            float mainThickness = 5.0f + (boostedPeak * 10.0f);
-            Color neon1 = new Color(beatColor.R, beatColor.G, beatColor.B, (byte)160);
-            DrawBassWave(Raylib.GetScreenWidth(), Raylib.GetScreenHeight(), waveTime, smoothVolume, 0.012f, neon1, mainThickness, false);
-            DrawBassWave(Raylib.GetScreenWidth(), Raylib.GetScreenHeight(), waveTime, smoothVolume * 0.95f, 0.012f, new Color(255, 255, 255, 220), 2.5f, false);
-
-            float secondaryThickness = 3.0f + (boostedPeak * 6.0f);
-            Color neon2 = new Color(beatColor.R, beatColor.G, beatColor.B, (byte)100);
-            DrawBassWave(Raylib.GetScreenWidth(), Raylib.GetScreenHeight(), waveTime * 1.05f, smoothVolume * 0.70f, 0.014f, neon2, secondaryThickness, true); 
-            DrawBassWave(Raylib.GetScreenWidth(), Raylib.GetScreenHeight(), waveTime * 1.05f, smoothVolume * 0.60f, 0.014f, new Color(220, 220, 255, 130), 1.5f, true);
-
-            Raylib.EndBlendMode();
-
-            // --- UI ---
-            Raylib.DrawRectangle(25, 25, 450, 70, new Color(0, 0, 0, 150));
-            Raylib.DrawText("HIGH IMPACT MODE", 35, 35, 18, beatColor);
-            Raylib.DrawText(currentTrackInfo, 35, 60, 22, Color.White);
-            
-            Raylib.EndDrawing();
+            await Task.Delay(10); // Voorkom 100% CPU gebruik
         }
-        Raylib.CloseWindow();
     }
 
     static async Task StartSpotify()
     {
-        // 1. Probeer bestaande inloggegevens te laden
         if (File.Exists(credentialsPath))
         {
             try 
@@ -122,17 +76,15 @@ class Program
                 var config = SpotifyClientConfig.CreateDefault().WithAuthenticator(authenticator);
                 _spotify = new SpotifyClient(config);
 
-                // Update token in bestand als deze ververst wordt
                 authenticator.TokenRefreshed += (sender, newToken) => 
                     File.WriteAllText(credentialsPath, JsonConvert.SerializeObject(newToken));
 
                 await RunPollingLoop();
                 return;
             }
-            catch { /* Token corrupt of verlopen, doe opnieuw login */ }
+            catch { /* Token corrupt of verlopen */ }
         }
 
-        // 2. Geen geldige credentials? Start browser login
         var server = new EmbedIOAuthServer(new Uri("http://127.0.0.1:5000/callback"), 5000);
         await server.Start();
 
@@ -143,11 +95,11 @@ class Program
             );
 
             await File.WriteAllTextAsync(credentialsPath, JsonConvert.SerializeObject(tokenResponse));
-            
             var config = SpotifyClientConfig.CreateDefault().WithAuthenticator(new AuthorizationCodeAuthenticator(clientId, clientSecret, tokenResponse));
             _spotify = new SpotifyClient(config);
             
             await server.Stop();
+            Console.WriteLine("Spotify verbonden!");
             await RunPollingLoop();
         };
 
@@ -155,7 +107,10 @@ class Program
         {
             Scope = new[] { Scopes.UserReadCurrentlyPlaying, Scopes.UserReadPlaybackState }
         };
-        BrowserUtil.Open(request.ToUri());
+        // Handmatig openen van browser voor login
+        Console.WriteLine("Open je browser om in te loggen bij Spotify...");
+        // In een echte headless omgeving zou je de URL printen: Console.WriteLine(request.ToUri());
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(request.ToUri().ToString()) { UseShellExecute = true });
     }
 
     static async Task RunPollingLoop()
@@ -167,7 +122,7 @@ class Program
                 try {
                     var playback = await _spotify.Player.GetCurrentPlayback();
                     if (playback?.Item is FullTrack track) {
-                        currentTrackInfo = $"{track.Name} - {track.Artists[0].Name}";
+                        Console.Title = $"Nu speelt: {track.Name} - {track.Artists[0].Name}";
                     }
                 } catch { }
             }
@@ -175,26 +130,9 @@ class Program
         }
     }
 
-    static void SendMediaKey(byte key) { keybd_event(key, 0, 0, 0); keybd_event(key, 0, KEYEVENTF_KEYUP, 0); }
-
-    static void DrawGrid(int w, int h, Color accent, float peak)
-    {
-        byte alpha = (byte)(15 + (peak * 60));
-        Color gridColor = new Color(accent.R, accent.G, accent.B, alpha);
-        for (int i = 0; i <= w; i += 85) Raylib.DrawLine(i, 0, i, h, gridColor);
-        for (int i = 0; i <= h; i += 85) Raylib.DrawLine(0, i, w, i, gridColor);
-    }
-
-    static void DrawBassWave(int w, int h, float time, float intensity, float frequency, Color color, float thickness, bool isOpposite)
-    {
-        Vector2 previousPoint = new Vector2(0, (float)h / 2);
-        for (int x = 0; x <= w; x += 4)
-        {
-            float multiplier = isOpposite ? -1.0f : 1.0f;
-            float y = (float)Math.Sin(x * frequency + time) * intensity * multiplier;
-            Vector2 currentPoint = new Vector2(x, (float)h / 2 + y);
-            if (x > 0) Raylib.DrawLineEx(previousPoint, currentPoint, thickness, color);
-            previousPoint = currentPoint;
-        }
+    static void SendMediaKey(byte key) 
+    { 
+        keybd_event(key, 0, 0, 0); 
+        keybd_event(key, 0, KEYEVENTF_KEYUP, 0); 
     }
 }

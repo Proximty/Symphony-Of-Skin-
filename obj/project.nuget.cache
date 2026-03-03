@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "jryTnaZuT6Y=",
+  "dgSpecHash": "eOzcctn1N1g=",
   "success": true,
-  "projectFilePath": "C:\\projecten\\Interactief\\Interactief.csproj",
+  "projectFilePath": "C:\\projecten\\Symphony-Of-Skin-\\Interactief.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\hanna\\.nuget\\packages\\cscore\\1.2.1.2\\cscore.1.2.1.2.nupkg.sha512",
     "C:\\Users\\hanna\\.nuget\\packages\\embedio\\3.5.2\\embedio.3.5.2.nupkg.sha512",
@@ -19,9 +19,9 @@
       "code": "NU1701",
       "level": "Warning",
       "message": "Package 'CSCore 1.2.1.2' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net9.0'. This package may not be fully compatible with your project.",
-      "projectPath": "C:\\projecten\\Interactief\\Interactief.csproj",
+      "projectPath": "C:\\projecten\\Symphony-Of-Skin-\\Interactief.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\projecten\\Interactief\\Interactief.csproj",
+      "filePath": "C:\\projecten\\Symphony-Of-Skin-\\Interactief.csproj",
       "libraryId": "CSCore",
       "targetGraphs": [
         "net9.0"

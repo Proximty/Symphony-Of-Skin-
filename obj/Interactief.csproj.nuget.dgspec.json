@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\projecten\\Interactief\\Interactief.csproj": {}
+    "C:\\projecten\\Symphony-Of-Skin-\\Interactief.csproj": {}
   },
   "projects": {
-    "C:\\projecten\\Interactief\\Interactief.csproj": {
+    "C:\\projecten\\Symphony-Of-Skin-\\Interactief.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\projecten\\Interactief\\Interactief.csproj",
+        "projectUniqueName": "C:\\projecten\\Symphony-Of-Skin-\\Interactief.csproj",
         "projectName": "Interactief",
-        "projectPath": "C:\\projecten\\Interactief\\Interactief.csproj",
+        "projectPath": "C:\\projecten\\Symphony-Of-Skin-\\Interactief.csproj",
         "packagesPath": "C:\\Users\\hanna\\.nuget\\packages\\",
-        "outputPath": "C:\\projecten\\Interactief\\obj\\",
+        "outputPath": "C:\\projecten\\Symphony-Of-Skin-\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
