@@ -63,40 +63,31 @@ class Program
         }
     }
 
-   static async Task SpeelPlaylist(string playlistUri)
+static async Task SpeelPlaylist(string playlistUri)
 {
     if (_spotify == null) return;
 
     try
     {
         var devicesResponse = await _spotify.Player.GetAvailableDevices();
-        var devices = devicesResponse.Devices;
+        // Zoek specifiek naar de Raspberry Pi in de lijst met apparaten
+        var piDevice = devicesResponse.Devices.Find(d => d.Name.ToLower().Contains("raspotify") || d.Name.ToLower().Contains("raspberry"));
 
-        if (devices.Count == 0)
+        if (piDevice == null)
         {
-            Console.WriteLine("WAARSCHUWING: Geen apparaten gevonden. Start Spotify handmatig op je PC!");
+            Console.WriteLine("WAARSCHUWING: Raspberry Pi (Raspotify) niet gevonden in het netwerk!");
             return;
         }
 
-        // Pak het eerste apparaat
-        string deviceId = devices[0].Id;
-
-        // FORCEER Spotify om dit apparaat te gebruiken (Transfer Playback)
-        // Dit "pakt de focus" van de speler
-        await _spotify.Player.TransferPlayback(new PlayerTransferPlaybackRequest(new List<string> { deviceId }) { Play = true });
-
-        // Wacht heel even zodat Spotify de switch kan verwerken
-        await Task.Delay(500);
-
-        // Start nu de playlist
+        // Activeer de Pi en speel de playlist af
         var request = new PlayerResumePlaybackRequest 
         { 
             ContextUri = playlistUri,
-            DeviceId = deviceId 
+            DeviceId = piDevice.Id 
         };
         
         await _spotify.Player.ResumePlayback(request);
-        Console.WriteLine($"Succes! Apparaat '{devices[0].Name}' geactiveerd voor playlist.");
+        Console.WriteLine($"Muziek gestart op de Raspberry Pi: {piDevice.Name}");
     }
     catch (Exception ex) 
     { 
