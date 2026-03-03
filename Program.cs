@@ -63,38 +63,46 @@ class Program
         }
     }
 
-    static async Task SpeelPlaylist(string playlistUri)
+   static async Task SpeelPlaylist(string playlistUri)
+{
+    if (_spotify == null) return;
+
+    try
     {
-        if (_spotify == null) return;
+        var devicesResponse = await _spotify.Player.GetAvailableDevices();
+        var devices = devicesResponse.Devices;
 
-        try 
+        if (devices.Count == 0)
         {
-            // Zoek eerst naar beschikbare apparaten (zoals je laptop of speaker)
-            var devicesResponse = await _spotify.Player.GetAvailableDevices();
-            var devices = devicesResponse.Devices;
-
-            if (devices.Count == 0)
-            {
-                Console.WriteLine("WAARSCHUWING: Geen actief apparaat gevonden. Zet Spotify aan!");
-                return;
-            }
-
-            // Start de playlist op het eerste beschikbare apparaat
-            var request = new PlayerResumePlaybackRequest 
-            { 
-                ContextUri = playlistUri,
-                DeviceId = devices[0].Id 
-            };
-            
-            await _spotify.Player.ResumePlayback(request);
-            Console.WriteLine($"Succes! Playlist gestart op {devices[0].Name}");
+            Console.WriteLine("WAARSCHUWING: Geen apparaten gevonden. Start Spotify handmatig op je PC!");
+            return;
         }
-        catch (Exception ex) 
+
+        // Pak het eerste apparaat
+        string deviceId = devices[0].Id;
+
+        // FORCEER Spotify om dit apparaat te gebruiken (Transfer Playback)
+        // Dit "pakt de focus" van de speler
+        await _spotify.Player.TransferPlayback(new PlayerTransferPlaybackRequest(new List<string> { deviceId }) { Play = true });
+
+        // Wacht heel even zodat Spotify de switch kan verwerken
+        await Task.Delay(500);
+
+        // Start nu de playlist
+        var request = new PlayerResumePlaybackRequest 
         { 
-            Console.WriteLine("Fout bij afspelen via API: " + ex.Message); 
-        }
+            ContextUri = playlistUri,
+            DeviceId = deviceId 
+        };
+        
+        await _spotify.Player.ResumePlayback(request);
+        Console.WriteLine($"Succes! Apparaat '{devices[0].Name}' geactiveerd voor playlist.");
     }
-
+    catch (Exception ex) 
+    { 
+        Console.WriteLine("Fout: " + ex.Message); 
+    }
+}
     static async Task StartSpotify()
     {
         // 1. Probeer bestaande credentials te laden
