@@ -1,0 +1,14 @@
+C:\projecten\Interactief\bin\Debug\net8.0-windows\Interactief.exe
+C:\projecten\Interactief\bin\Debug\net8.0-windows\Interactief.deps.json
+C:\projecten\Interactief\bin\Debug\net8.0-windows\Interactief.runtimeconfig.json
+C:\projecten\Interactief\bin\Debug\net8.0-windows\Interactief.dll
+C:\projecten\Interactief\bin\Debug\net8.0-windows\Interactief.pdb
+C:\projecten\Interactief\obj\Debug\net8.0-windows\Interactief.GeneratedMSBuildEditorConfig.editorconfig
+C:\projecten\Interactief\obj\Debug\net8.0-windows\Interactief.AssemblyInfoInputs.cache
+C:\projecten\Interactief\obj\Debug\net8.0-windows\Interactief.AssemblyInfo.cs
+C:\projecten\Interactief\obj\Debug\net8.0-windows\Interactief.csproj.CoreCompileInputs.cache
+C:\projecten\Interactief\obj\Debug\net8.0-windows\Interactief.dll
+C:\projecten\Interactief\obj\Debug\net8.0-windows\refint\Interactief.dll
+C:\projecten\Interactief\obj\Debug\net8.0-windows\Interactief.pdb
+C:\projecten\Interactief\obj\Debug\net8.0-windows\Interactief.genruntimeconfig.cache
+C:\projecten\Interactief\obj\Debug\net8.0-windows\ref\Interactief.dll

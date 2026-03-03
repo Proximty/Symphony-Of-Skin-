@@ -1,0 +1,31 @@
+{
+  "version": 2,
+  "dgSpecHash": "jryTnaZuT6Y=",
+  "success": true,
+  "projectFilePath": "C:\\projecten\\Interactief\\Interactief.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\hanna\\.nuget\\packages\\cscore\\1.2.1.2\\cscore.1.2.1.2.nupkg.sha512",
+    "C:\\Users\\hanna\\.nuget\\packages\\embedio\\3.5.2\\embedio.3.5.2.nupkg.sha512",
+    "C:\\Users\\hanna\\.nuget\\packages\\newtonsoft.json\\13.0.4\\newtonsoft.json.13.0.4.nupkg.sha512",
+    "C:\\Users\\hanna\\.nuget\\packages\\raylib-cs\\7.0.2\\raylib-cs.7.0.2.nupkg.sha512",
+    "C:\\Users\\hanna\\.nuget\\packages\\sharphook\\7.1.1\\sharphook.7.1.1.nupkg.sha512",
+    "C:\\Users\\hanna\\.nuget\\packages\\spotifyapi.web\\7.2.1\\spotifyapi.web.7.2.1.nupkg.sha512",
+    "C:\\Users\\hanna\\.nuget\\packages\\spotifyapi.web.auth\\7.2.1\\spotifyapi.web.auth.7.2.1.nupkg.sha512",
+    "C:\\Users\\hanna\\.nuget\\packages\\system.valuetuple\\4.5.0\\system.valuetuple.4.5.0.nupkg.sha512",
+    "C:\\Users\\hanna\\.nuget\\packages\\unosquare.swan.lite\\3.1.0\\unosquare.swan.lite.3.1.0.nupkg.sha512"
+  ],
+  "logs": [
+    {
+      "code": "NU1701",
+      "level": "Warning",
+      "message": "Package 'CSCore 1.2.1.2' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net9.0'. This package may not be fully compatible with your project.",
+      "projectPath": "C:\\projecten\\Interactief\\Interactief.csproj",
+      "warningLevel": 1,
+      "filePath": "C:\\projecten\\Interactief\\Interactief.csproj",
+      "libraryId": "CSCore",
+      "targetGraphs": [
+        "net9.0"
+      ]
+    }
+  ]
+}
