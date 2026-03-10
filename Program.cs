@@ -58,7 +58,8 @@ class Program
         var challenge = GenerateCodeChallenge(verifier);
 
         // Gebruik 'localhost' voor de redirect, gebruik SSH-tunnel op laptop als dit faalt
-        var server = new EmbedIOAuthServer(new Uri("http://localhost:8080/callback"), 8080);
+       // De URI in je code MOET exact overeenkomen met het dashboard
+       var server = new EmbedIOAuthServer(new Uri("http://10.17.36.151:8080/callback"), 8080);
         await server.Start();
 
         var loginRequest = new LoginRequest(server.BaseUri, clientId, LoginRequest.ResponseType.Code)
