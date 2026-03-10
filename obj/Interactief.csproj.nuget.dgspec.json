@@ -61,11 +61,11 @@
             },
             "SpotifyAPI.Web": {
               "target": "Package",
-              "version": "[7.2.1, )"
+              "version": "[7.4.2, )"
             },
             "SpotifyAPI.Web.Auth": {
               "target": "Package",
-              "version": "[7.2.1, )"
+              "version": "[7.4.2, )"
             }
           },
           "imports": [

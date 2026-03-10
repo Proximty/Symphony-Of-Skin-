@@ -86,7 +86,7 @@
           }
         }
       },
-      "SpotifyAPI.Web/7.2.1": {
+      "SpotifyAPI.Web/7.4.2": {
         "type": "package",
         "dependencies": {
           "Newtonsoft.Json": "13.0.3"
@@ -102,11 +102,11 @@
           }
         }
       },
-      "SpotifyAPI.Web.Auth/7.2.1": {
+      "SpotifyAPI.Web.Auth/7.4.2": {
         "type": "package",
         "dependencies": {
           "EmbedIO": "3.5.2",
-          "SpotifyAPI.Web": "7.2.1"
+          "SpotifyAPI.Web": "7.4.2"
         },
         "compile": {
           "lib/net8.0/SpotifyAPI.Web.Auth.dll": {
@@ -229,10 +229,10 @@
         "sharphook.nuspec"
       ]
     },
-    "SpotifyAPI.Web/7.2.1": {
-      "sha512": "7yatLKdwPmigJ+GGPUHwZppYzWNIPOSrpA3KKK/kndJl657zm1yzaAQ7j2xy3G7lyiKsdRZtz4k6CpFN32pyng==",
+    "SpotifyAPI.Web/7.4.2": {
+      "sha512": "DxyIO+oxI7gyqyGJ5QzVWf31JInRDRhqGtTXIKX6HUJBie+aR+OuB4bFSYWNVO6GL4V+Tm3PQBKNBa+UJzchOA==",
       "type": "package",
-      "path": "spotifyapi.web/7.2.1",
+      "path": "spotifyapi.web/7.4.2",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -248,14 +248,14 @@
         "lib/netstandard2.0/SpotifyAPI.Web.xml",
         "lib/netstandard2.1/SpotifyAPI.Web.dll",
         "lib/netstandard2.1/SpotifyAPI.Web.xml",
-        "spotifyapi.web.7.2.1.nupkg.sha512",
+        "spotifyapi.web.7.4.2.nupkg.sha512",
         "spotifyapi.web.nuspec"
       ]
     },
-    "SpotifyAPI.Web.Auth/7.2.1": {
-      "sha512": "/U/KCV4iBsG3rHBCDL7THKkJcNdfP0Lqhq87afKeTjP7EQGM5haDy6rNblZlL/t9RnK9+DFhWCdAKVQagDB6bg==",
+    "SpotifyAPI.Web.Auth/7.4.2": {
+      "sha512": "+Og2S4d8Q/lrZsBXlgPt0FieigtzVHj1Lg6+eDF+5RwVpKsfwQjW7aVfaDyktVCo56T2qOBjbqC/XluIxXGJgQ==",
       "type": "package",
-      "path": "spotifyapi.web.auth/7.2.1",
+      "path": "spotifyapi.web.auth/7.4.2",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -271,7 +271,7 @@
         "lib/netstandard2.0/SpotifyAPI.Web.Auth.xml",
         "lib/netstandard2.1/SpotifyAPI.Web.Auth.dll",
         "lib/netstandard2.1/SpotifyAPI.Web.Auth.xml",
-        "spotifyapi.web.auth.7.2.1.nupkg.sha512",
+        "spotifyapi.web.auth.7.4.2.nupkg.sha512",
         "spotifyapi.web.auth.nuspec"
       ]
     },
@@ -339,8 +339,8 @@
     "net9.0": [
       "Newtonsoft.Json >= 13.0.4",
       "SharpHook >= 7.1.1",
-      "SpotifyAPI.Web >= 7.2.1",
-      "SpotifyAPI.Web.Auth >= 7.2.1"
+      "SpotifyAPI.Web >= 7.4.2",
+      "SpotifyAPI.Web.Auth >= 7.4.2"
     ]
   },
   "packageFolders": {
@@ -404,11 +404,11 @@
           },
           "SpotifyAPI.Web": {
             "target": "Package",
-            "version": "[7.2.1, )"
+            "version": "[7.4.2, )"
           },
           "SpotifyAPI.Web.Auth": {
             "target": "Package",
-            "version": "[7.2.1, )"
+            "version": "[7.4.2, )"
           }
         },
         "imports": [
