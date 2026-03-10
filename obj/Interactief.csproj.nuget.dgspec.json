@@ -51,17 +51,9 @@
         "net9.0": {
           "targetAlias": "net9.0",
           "dependencies": {
-            "CSCore": {
-              "target": "Package",
-              "version": "[1.2.1.2, )"
-            },
             "Newtonsoft.Json": {
               "target": "Package",
               "version": "[13.0.4, )"
-            },
-            "Raylib-cs": {
-              "target": "Package",
-              "version": "[7.0.2, )"
             },
             "SharpHook": {
               "target": "Package",
