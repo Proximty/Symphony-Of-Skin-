@@ -23,27 +23,19 @@ class Program
         { ConsoleKey.Enter,      "Electronic" }
     };
 
-    static async Task Main()
-    {
-        Console.WriteLine("Systeem opstarten...");
-        // Audio code verwijderd omdat dit niet op Linux werkt
-        
-        while (true)
-        {
-            if (Console.KeyAvailable)
-            {
-                var key = Console.ReadKey(true).Key;
-                if (key == ConsoleKey.Escape) break;
+   static async Task Main()
+{
+    Console.WriteLine("Systeem opgestart. Klaar voor input!");
 
-                if (GenreMap.ContainsKey(key))
-                {
-                    // Stuur naar je eigen API zoals besproken
-                    await SendGenreToApi(GenreMap[key]);
-                }
-            }
-            await Task.Delay(100);
-        }
+    // Zorg dat de rest van je code hieronder staat, 
+    // maar zonder enige verwijzing naar CSCore!
+
+    while (true)
+    {
+        // Je input logic
+        await Task.Delay(100);
     }
+}
 
     static async Task SendGenreToApi(string genre)
     {
