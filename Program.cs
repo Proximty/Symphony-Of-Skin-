@@ -25,7 +25,7 @@ class Program
         var verifier = GenerateRandomString();
         var challenge = GenerateCodeChallenge(verifier);
 
-        var server = new EmbedIOAuthServer(new Uri("http://localhost:8080/callback"), 8080);
+        var server = new EmbedIOAuthServer(new Uri("http://10.17.36.151:8080/callback"), 8080);
         await server.Start();
 
         var loginRequest = new LoginRequest(server.BaseUri, clientId, LoginRequest.ResponseType.Code)
