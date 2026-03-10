@@ -22,18 +22,26 @@ class Program
         Console.WriteLine("Systeem start op...");
         using var client = new HttpClient();
 
-        // 1. Officiële Spotify Device Code Endpoint
-        var values = new Dictionary<string, string> { { "client_id", clientId }, { "scope", "user-modify-playback-state" } };
-        var res = await client.PostAsync("https://accounts.spotify.com/api/device_authorization", new FormUrlEncodedContent(values));
+        // 1. Officiële Spotify Device Code aanvraag
+        var values = new Dictionary<string, string> { 
+            { "client_id", clientId }, 
+            { "scope", "user-modify-playback-state" } 
+        };
+        
+        var res = await client.PostAsync("https://accounts.spotify.com/api/device-authorization", new FormUrlEncodedContent(values));
         var json = await res.Content.ReadAsStringAsync();
         
+        if (!res.IsSuccessStatusCode) {
+            Console.WriteLine($"Fout bij verbinden met Spotify: {json}");
+            return;
+        }
+
         using var doc = JsonDocument.Parse(json);
         string deviceCode = doc.RootElement.GetProperty("device_code").GetString()!;
-        string userCode = doc.RootElement.GetProperty("user_code").GetString()!;
         string url = doc.RootElement.GetProperty("verification_uri_complete").GetString()!;
 
         Console.WriteLine($"\nGa naar: {url}");
-        Console.WriteLine($"Voer deze code in: {userCode}\n");
+        Console.WriteLine("Voer de code in die op het scherm staat.\n");
 
         // 2. Pollen tot de gebruiker geautoriseerd heeft
         string accessToken = "";
@@ -55,14 +63,16 @@ class Program
         }
 
         _spotify = new SpotifyClient(accessToken);
-        Console.WriteLine("Succesvol verbonden!");
+        Console.WriteLine("Succesvol verbonden met Spotify!");
 
+        // 3. Luister naar toetsenbord input
         while (true)
         {
             var keyInfo = Console.ReadKey(intercept: true);
             if (GenreMap.ContainsKey(keyInfo.Key))
             {
                 await _spotify.Player.ResumePlayback(new PlayerResumePlaybackRequest { ContextUri = GenreMap[keyInfo.Key] });
+                Console.WriteLine("Playlist gestart.");
             }
         }
     }
