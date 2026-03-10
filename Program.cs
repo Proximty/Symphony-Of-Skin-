@@ -87,7 +87,7 @@ static async Task SpeelPlaylist(string playlistUri)
         };
         
         await _spotify.Player.ResumePlayback(request);
-        Console.WriteLine($"Muziek gestart op de Raspberry Pi: {piDevice.Name}");
+        // Console.WriteLine($"Muziek gestart op de Raspberry Pi: {piDevice.Name}");
     }
     catch (Exception ex) 
     { 
@@ -144,4 +144,4 @@ static async Task SpeelPlaylist(string playlistUri)
 Console.WriteLine("GEBRUIK DEZE LINK OM IN TE LOGGEN:");
 Console.WriteLine(loginUri);
     }
-}
+} 

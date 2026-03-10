@@ -164,11 +164,7 @@
           }
         }
       },
-      "System.ValueTuple/4.5.0": {},
       "Unosquare.Swan.Lite/3.1.0": {
-        "dependencies": {
-          "System.ValueTuple": "4.5.0"
-        },
         "runtime": {
           "lib/netstandard2.0/Swan.Lite.dll": {
             "assemblyVersion": "3.1.0.0",
@@ -232,13 +228,6 @@
       "sha512": "sha512-/U/KCV4iBsG3rHBCDL7THKkJcNdfP0Lqhq87afKeTjP7EQGM5haDy6rNblZlL/t9RnK9+DFhWCdAKVQagDB6bg==",
       "path": "spotifyapi.web.auth/7.2.1",
       "hashPath": "spotifyapi.web.auth.7.2.1.nupkg.sha512"
-    },
-    "System.ValueTuple/4.5.0": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-okurQJO6NRE/apDIP23ajJ0hpiNmJ+f0BwOlB/cSqTLQlw5upkf+5+96+iG2Jw40G1fCVCyPz/FhIABUjMR+RQ==",
-      "path": "system.valuetuple/4.5.0",
-      "hashPath": "system.valuetuple.4.5.0.nupkg.sha512"
     },
     "Unosquare.Swan.Lite/3.1.0": {
       "type": "package",
