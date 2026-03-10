@@ -1,17 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net.Http;
 using System.Threading.Tasks;
-using System.Security.Cryptography;
-using System.Text;
-using System.IO;
+using System.Text.Json; 
 using SpotifyAPI.Web;
-using SpotifyAPI.Web.Auth;
-using Newtonsoft.Json;
 
 class Program
 {
     private static readonly string clientId = "f135a36b32054ef49aac4c7e27554f85";
-    private static readonly string tokenPath = "spotify_token.json";
     private static SpotifyClient? _spotify;
 
     private static readonly Dictionary<ConsoleKey, string> GenreMap = new()
@@ -23,72 +19,53 @@ class Program
 
     static async Task Main()
     {
-        if (File.Exists(tokenPath))
+        Console.WriteLine("Systeem start op...");
+        
+        using var client = new HttpClient();
+        var values = new Dictionary<string, string> { { "client_id", clientId }, { "scope", "user-modify-playback-state" } };
+        
+        // Spotify Device Code Endpoint
+        var res = await client.PostAsync("https://accounts.spotify.com/api/device/code", new FormUrlEncodedContent(values));
+        var json = await res.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        
+        var root = doc.RootElement;
+        string deviceCode = root.GetProperty("device_code").GetString()!;
+        string url = root.GetProperty("verification_uri_complete").GetString()!;
+
+        Console.WriteLine($"\n--- AUTHENTICATIE NODIG ---");
+        Console.WriteLine($"Ga naar: {url}");
+        Console.WriteLine("---------------------------\n");
+
+        string accessToken = "";
+        while (string.IsNullOrEmpty(accessToken))
         {
-            Console.WriteLine("Opgeslagen sessie gevonden. Bezig met laden...");
-            var json = File.ReadAllText(tokenPath);
-            var token = JsonConvert.DeserializeObject<PKCETokenResponse>(json);
+            await Task.Delay(5000);
+            var tokenValues = new Dictionary<string, string> {
+                { "grant_type", "urn:ietf:params:oauth:grant-type:device_code" },
+                { "device_code", deviceCode },
+                { "client_id", clientId }
+            };
+            var tokenRes = await client.PostAsync("https://accounts.spotify.com/api/token", new FormUrlEncodedContent(tokenValues));
+            var tokenJson = await tokenRes.Content.ReadAsStringAsync();
             
-            var authenticator = new PKCEAuthenticator(clientId, token);
-            authenticator.TokenRefreshed += (sender, t) => File.WriteAllText(tokenPath, JsonConvert.SerializeObject(t));
-            
-            _spotify = new SpotifyClient(SpotifyClientConfig.CreateDefault().WithAuthenticator(authenticator));
-            Console.WriteLine("Sessie geladen! Je kunt je Makey Makey gebruiken.");
-        }
-        else
-        {
-            await InitialAuth();
+            if (tokenJson.Contains("access_token")) {
+                using var tokenDoc = JsonDocument.Parse(tokenJson);
+                accessToken = tokenDoc.RootElement.GetProperty("access_token").GetString()!;
+            }
         }
 
-        // Loop voor Makey Makey input
+        _spotify = new SpotifyClient(accessToken);
+        Console.WriteLine("Succesvol verbonden!");
+
         while (true)
         {
             var keyInfo = Console.ReadKey(intercept: true);
-            if (_spotify != null && GenreMap.ContainsKey(keyInfo.Key))
+            if (GenreMap.ContainsKey(keyInfo.Key))
             {
-                await SpeelMuziek(GenreMap[keyInfo.Key]);
+                await _spotify.Player.ResumePlayback(new PlayerResumePlaybackRequest { ContextUri = GenreMap[keyInfo.Key] });
+                Console.WriteLine("Muziek gestart!");
             }
-            await Task.Delay(100);
         }
     }
-
-    static async Task InitialAuth()
-    {
-        var verifier = GenerateRandomString();
-        var challenge = GenerateCodeChallenge(verifier);
-
-        // Gebruik 'localhost' voor de redirect, gebruik SSH-tunnel op laptop als dit faalt
-       // De URI in je code MOET exact overeenkomen met het dashboard
-       var server = new EmbedIOAuthServer(new Uri("http://10.17.36.151:8080/callback"), 8080);
-        await server.Start();
-
-        var loginRequest = new LoginRequest(server.BaseUri, clientId, LoginRequest.ResponseType.Code)
-        {
-            CodeChallenge = challenge,
-            CodeChallengeMethod = "S256",
-            Scope = new List<string> { Scopes.UserModifyPlaybackState, Scopes.UserReadPlaybackState }
-        };
-
-        Console.WriteLine("\n--- AUTHENTICATIE NODIG (SLECHTS ÉÉN KEER) ---");
-        Console.WriteLine("Open deze link op je laptop (gebruik SSH tunnel indien nodig):");
-        Console.WriteLine(loginRequest.ToUri());
-
-        server.AuthorizationCodeReceived += async (sender, response) =>
-        {
-            await server.Stop();
-            var tokenResponse = await new OAuthClient().RequestToken(new PKCETokenRequest(clientId, response.Code, server.BaseUri, verifier));
-            
-            File.WriteAllText(tokenPath, JsonConvert.SerializeObject(tokenResponse));
-            
-            var authenticator = new PKCEAuthenticator(clientId, tokenResponse);
-            _spotify = new SpotifyClient(SpotifyClientConfig.CreateDefault().WithAuthenticator(authenticator));
-            
-            Console.WriteLine("\nSuccesvol gekoppeld! Token is opgeslagen.");
-        };
-    }
-
-    // ... (GenerateRandomString, GenerateCodeChallenge en SpeelMuziek blijven hetzelfde)
-    static string GenerateRandomString() { /* ... */ return ""; } // Vul je bestaande logica hier in
-    static string GenerateCodeChallenge(string verifier) { /* ... */ return ""; }
-    static async Task SpeelMuziek(string playlistUri) { /* ... */ }
 }
