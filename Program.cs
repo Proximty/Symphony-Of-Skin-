@@ -7,11 +7,9 @@ using SpotifyAPI.Web;
 
 class Program
 {
-    // Vul hier je eigen Client ID in
     private static readonly string clientId = "f135a36b32054ef49aac4c7e27554f85";
     private static SpotifyClient? _spotify;
 
-    // Je playlist instellingen
     private static readonly Dictionary<ConsoleKey, string> GenreMap = new()
     {
         { ConsoleKey.Spacebar, "spotify:playlist:37i9dQZF1DXcBWIGoYBM5M" },
@@ -22,26 +20,22 @@ class Program
     static async Task Main()
     {
         Console.WriteLine("Systeem start op...");
-        
-        // 1. Inloggen via Device Code Flow
         using var client = new HttpClient();
+
+        // 1. Officiële Spotify Device Code Endpoint
         var values = new Dictionary<string, string> { { "client_id", clientId }, { "scope", "user-modify-playback-state" } };
-        
-        var res = await client.PostAsync("https://accounts.spotify.com/api/device-authorization", new FormUrlEncodedContent(values));
+        var res = await client.PostAsync("https://accounts.spotify.com/api/device_authorization", new FormUrlEncodedContent(values));
         var json = await res.Content.ReadAsStringAsync();
-        using var doc = JsonDocument.Parse(json);
         
-        var root = doc.RootElement;
-        string deviceCode = root.GetProperty("device_code").GetString()!;
-        string userCode = root.GetProperty("user_code").GetString()!;
-        string url = root.GetProperty("verification_uri_complete").GetString()!;
+        using var doc = JsonDocument.Parse(json);
+        string deviceCode = doc.RootElement.GetProperty("device_code").GetString()!;
+        string userCode = doc.RootElement.GetProperty("user_code").GetString()!;
+        string url = doc.RootElement.GetProperty("verification_uri_complete").GetString()!;
 
-        Console.WriteLine($"\n--- AUTHENTICATIE VEREIST ---");
-        Console.WriteLine($"1. Ga naar: {url}");
-        Console.WriteLine($"2. Voer deze code in: {userCode}");
-        Console.WriteLine("---------------------------\n");
+        Console.WriteLine($"\nGa naar: {url}");
+        Console.WriteLine($"Voer deze code in: {userCode}\n");
 
-        // 2. Wacht op token
+        // 2. Pollen tot de gebruiker geautoriseerd heeft
         string accessToken = "";
         while (string.IsNullOrEmpty(accessToken))
         {
@@ -60,31 +54,16 @@ class Program
             }
         }
 
-        // 3. Initialiseer client
         _spotify = new SpotifyClient(accessToken);
-        Console.WriteLine("Succesvol verbonden met Spotify!");
+        Console.WriteLine("Succesvol verbonden!");
 
-        // 4. Luister naar Makey Makey input
         while (true)
         {
             var keyInfo = Console.ReadKey(intercept: true);
             if (GenreMap.ContainsKey(keyInfo.Key))
             {
-                await SpeelMuziek(GenreMap[keyInfo.Key]);
+                await _spotify.Player.ResumePlayback(new PlayerResumePlaybackRequest { ContextUri = GenreMap[keyInfo.Key] });
             }
-        }
-    }
-
-    static async Task SpeelMuziek(string playlistUri)
-    {
-        try 
-        {
-            await _spotify!.Player.ResumePlayback(new PlayerResumePlaybackRequest { ContextUri = playlistUri });
-            Console.WriteLine($"Muziek gestart: {playlistUri}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Fout bij afspelen: {ex.Message}");
         }
     }
 }
