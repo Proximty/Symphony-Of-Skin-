@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using System.Security.Cryptography; // Voor PKCE beveiliging
-using System.Text;                  // Voor de string omzetting
+using System.Security.Cryptography;
+using System.Text;
 using SpotifyAPI.Web;
 using SpotifyAPI.Web.Auth;
 
@@ -20,9 +20,8 @@ class Program
 
     static async Task Main()
     {
-        Console.WriteLine("Systeem start op... Authenticatie in browser vereist.");
+        Console.WriteLine("Systeem start op... Authenticatie via browser vereist.");
 
-        // Handmatige PKCE setup (Onafhankelijk van library-errors)
         var verifier = GenerateRandomString();
         var challenge = GenerateCodeChallenge(verifier);
 
@@ -36,14 +35,18 @@ class Program
             Scope = new List<string> { Scopes.UserModifyPlaybackState, Scopes.UserReadPlaybackState }
         };
 
-        BrowserUtil.Open(loginRequest.ToUri());
+        // Handmatige URL print voor Raspberry Pi (headless)
+        Console.WriteLine("\n--- AUTHENTICATIE NODIG ---");
+        Console.WriteLine("Kopieer deze URL naar je browser op een ander apparaat:");
+        Console.WriteLine(loginRequest.ToUri());
+        Console.WriteLine("---------------------------\n");
 
         server.AuthorizationCodeReceived += async (sender, response) =>
         {
             await server.Stop();
             var tokenResponse = await new OAuthClient().RequestToken(new PKCETokenRequest(clientId, response.Code, server.BaseUri, verifier));
             _spotify = new SpotifyClient(tokenResponse.AccessToken);
-            Console.WriteLine("\nIngelogd! Je kunt nu je Makey Makey gebruiken.");
+            Console.WriteLine("\nSuccesvol ingelogd! Je kunt nu je Makey Makey gebruiken.");
         };
 
         while (true)
@@ -57,7 +60,6 @@ class Program
         }
     }
 
-    // Handmatige generatoren om PKCE errors te voorkomen
     static string GenerateRandomString()
     {
         byte[] randomBytes = new byte[32];
@@ -82,7 +84,7 @@ class Program
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Fout: {ex.Message}. Check of Spotify actief is op je Pi.");
+            Console.WriteLine($"Fout: {ex.Message}. Staat Spotify wel open op je Pi (Raspotify)?");
         }
     }
 }
