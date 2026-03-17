@@ -1,75 +1,71 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Net.Http;
-using System.Threading.Tasks;
-using System.Text.Json;
-using SpotifyAPI.Web;
+using System.Diagnostics;
+using System.IO;
 
-class Program
+class PaalMuziek
 {
-    private static readonly string clientId = "f135a36b32054ef49aac4c7e27554f85";
-    private static SpotifyClient? _spotify;
-
-    private static readonly Dictionary<ConsoleKey, string> GenreMap = new()
+    static Dictionary<ConsoleKey, string> paalmappen = new()
     {
-        { ConsoleKey.Spacebar, "spotify:playlist:37i9dQZF1DXcBWIGoYBM5M" },
-        { ConsoleKey.UpArrow,  "spotify:playlist:37i9dQZF1DX4sW2JPNYs9L" },
-        { ConsoleKey.DownArrow, "spotify:playlist:37i9dQZF1DXcZQQ3sJ9Pga" }
+        { ConsoleKey.UpArrow,    "/muziek/paal1" },
+        { ConsoleKey.DownArrow,  "/muziek/paal2" },
+        { ConsoleKey.LeftArrow,  "/muziek/paal3" },
+        { ConsoleKey.RightArrow, "/muziek/paal4" },
+        { ConsoleKey.Spacebar,   "/muziek/paal5" },
+        { ConsoleKey.W,          "/muziek/paal6" },
     };
 
-    static async Task Main()
+    static Dictionary<ConsoleKey, string[]> playlists = new();
+    static Dictionary<ConsoleKey, int> trackIndex = new();
+    static Process? huidigAfspelen = null;
+
+    static void Main()
     {
-        Console.WriteLine("Systeem start op...");
-        using var client = new HttpClient();
-
-        // 1. Vraag Device Code aan via de officiële Spotify API
-        var values = new Dictionary<string, string> { { "client_id", clientId }, { "scope", "user-modify-playback-state" } };
-        var res = await client.PostAsync("https://accounts.spotify.com/api/device-authorization", new FormUrlEncodedContent(values));
-        var json = await res.Content.ReadAsStringAsync();
-        
-        using var doc = JsonDocument.Parse(json);
-        string deviceCode = doc.RootElement.GetProperty("device_code").GetString()!;
-        string userCode = doc.RootElement.GetProperty("user_code").GetString()!;
-        string url = doc.RootElement.GetProperty("verification_uri_complete").GetString()!;
-
-        Console.WriteLine($"\nGa naar: {url}");
-        Console.WriteLine($"Voer deze code in: {userCode}\n");
-
-        // 2. Wacht op token (Polling)
-        string accessToken = "";
-        while (string.IsNullOrEmpty(accessToken))
+        // Laad alle tracks per paal automatisch vanuit de map
+        foreach (var (toets, map) in paalmappen)
         {
-            await Task.Delay(5000);
-            var tokenValues = new Dictionary<string, string> {
-                { "grant_type", "urn:ietf:params:oauth:grant-type:device_code" },
-                { "device_code", deviceCode },
-                { "client_id", clientId }
-            };
-            var tokenRes = await client.PostAsync("https://accounts.spotify.com/api/token", new FormUrlEncodedContent(tokenValues));
-            var tokenJson = await tokenRes.Content.ReadAsStringAsync();
-            
-            if (tokenJson.Contains("access_token")) {
-                using var tokenDoc = JsonDocument.Parse(tokenJson);
-                accessToken = tokenDoc.RootElement.GetProperty("access_token").GetString()!;
+            if (Directory.Exists(map))
+            {
+                var tracks = Directory.GetFiles(map, "*.mp3");
+                Array.Sort(tracks); // Vaste volgorde op bestandsnaam
+                playlists[toets] = tracks;
+                Console.WriteLine($"Paal {toets}: {tracks.Length} tracks geladen uit {map}");
+            }
+            else
+            {
+                Console.WriteLine($"WAARSCHUWING: Map niet gevonden: {map}");
             }
         }
 
-        _spotify = new SpotifyClient(accessToken);
-        Console.WriteLine("Succesvol verbonden!");
+        Console.WriteLine("\nWachten op input...");
 
-        // 3. De while-loop voor je Makey Makey input
         while (true)
         {
-            var keyInfo = Console.ReadKey(intercept: true);
-            if (GenreMap.ContainsKey(keyInfo.Key))
+            var toets = Console.ReadKey(intercept: true).Key;
+
+            if (playlists.TryGetValue(toets, out var tracks) && tracks.Length > 0)
             {
-                try 
-                {
-                    await _spotify.Player.ResumePlayback(new PlayerResumePlaybackRequest { ContextUri = GenreMap[keyInfo.Key] });
-                    Console.WriteLine($"Gestart: {GenreMap[keyInfo.Key]}");
-                }
-                catch (Exception ex) { Console.WriteLine($"Fout: {ex.Message}"); }
+                trackIndex.TryAdd(toets, 0);
+                int index = trackIndex[toets];
+                string track = tracks[index];
+                trackIndex[toets] = (index + 1) % tracks.Length;
+
+                SpeelAf(track);
             }
         }
+    }
+
+    static void SpeelAf(string pad)
+    {
+        huidigAfspelen?.Kill();
+
+        huidigAfspelen = Process.Start(new ProcessStartInfo
+        {
+            FileName = "mpg123",
+            Arguments = $"\"{pad}\"",
+            UseShellExecute = false
+        });
+
+        Console.WriteLine($"Speelt af: {pad}");
     }
 }
