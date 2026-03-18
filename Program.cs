@@ -22,20 +22,34 @@ class Program
         Console.WriteLine("Systeem start op...");
         using var client = new HttpClient();
 
-        // 1. Vraag Device Code aan via de officiële Spotify API
-        var values = new Dictionary<string, string> { { "client_id", clientId }, { "scope", "user-modify-playback-state" } };
-        var res = await client.PostAsync("https://accounts.spotify.com/api/device-authorization", new FormUrlEncodedContent(values));
-        var json = await res.Content.ReadAsStringAsync();
+        // 1. Request Device Code
+        var values = new Dictionary<string, string> 
+        { 
+            { "client_id", clientId }, 
+            { "scope", "user-modify-playback-state user-read-playback-state" } 
+        };
         
-        using var doc = JsonDocument.Parse(json);
+        var res = await client.PostAsync("https://accounts.spotify.com/api/device/authorization", new FormUrlEncodedContent(values));
+        var jsonResponse = await res.Content.ReadAsStringAsync();
+        
+        // Safety check to prevent the '<' crash
+        if (!jsonResponse.Trim().StartsWith("{")) 
+        {
+            Console.WriteLine("\n--- ERROR ---");
+            Console.WriteLine("Spotify sent back an error page instead of data.");
+            Console.WriteLine("Response content: " + jsonResponse);
+            return;
+        }
+
+        using var doc = JsonDocument.Parse(jsonResponse);
         string deviceCode = doc.RootElement.GetProperty("device_code").GetString()!;
         string userCode = doc.RootElement.GetProperty("user_code").GetString()!;
-        string url = doc.RootElement.GetProperty("verification_uri_complete").GetString()!;
+        string url = doc.RootElement.GetProperty("verification_uri").GetString()!;
 
         Console.WriteLine($"\nGa naar: {url}");
-        Console.WriteLine($"Voer deze code in: {userCode}\n");
+        Console.WriteLine($"Code: {userCode}\n");
 
-        // 2. Wacht op token (Polling)
+        // 2. Poll for Token
         string accessToken = "";
         while (string.IsNullOrEmpty(accessToken))
         {
@@ -45,6 +59,7 @@ class Program
                 { "device_code", deviceCode },
                 { "client_id", clientId }
             };
+
             var tokenRes = await client.PostAsync("https://accounts.spotify.com/api/token", new FormUrlEncodedContent(tokenValues));
             var tokenJson = await tokenRes.Content.ReadAsStringAsync();
             
@@ -55,18 +70,17 @@ class Program
         }
 
         _spotify = new SpotifyClient(accessToken);
-        Console.WriteLine("Succesvol verbonden!");
+        Console.WriteLine("Verbonden! Gebruik de Makey Makey.");
 
-        // 3. De while-loop voor je Makey Makey input
+        // 3. Input Loop
         while (true)
         {
             var keyInfo = Console.ReadKey(intercept: true);
-            if (GenreMap.ContainsKey(keyInfo.Key))
+            if (GenreMap.ContainsKey(keyInfo.Key) && _spotify is not null)
             {
-                try 
-                {
+                try {
                     await _spotify.Player.ResumePlayback(new PlayerResumePlaybackRequest { ContextUri = GenreMap[keyInfo.Key] });
-                    Console.WriteLine($"Gestart: {GenreMap[keyInfo.Key]}");
+                    Console.WriteLine($"Afspelen: {GenreMap[keyInfo.Key]}");
                 }
                 catch (Exception ex) { Console.WriteLine($"Fout: {ex.Message}"); }
             }
