@@ -32,12 +32,12 @@ class Program
                 // VERVANG DEZE LINKS DOOR JOUW EIGEN SPOTIFY URI'S!
                 string playlistUri = key switch
                 {
-                    ConsoleKey.UpArrow    => "https://open.spotify.com/playlist/37i9dQZF1DX4o1oenSJRJd?si=1fa34d2732844f33", 
-                    ConsoleKey.DownArrow  => "https://open.spotify.com/playlist/2ibgJKkjNvFac0zfIhftDw?si=78e85b0b10334068", 
-                    ConsoleKey.LeftArrow  => "https://open.spotify.com/playlist/37i9dQZF1DWVJyzEwVacEu?si=16d4dc503e4e4445", 
-                    ConsoleKey.RightArrow => "https://open.spotify.com/playlist/37i9dQZF1E8LCKAL524VnW?si=04acda6b0e1e4a1e", 
-                    ConsoleKey.Spacebar   => "https://open.spotify.com/playlist/37i9dQZF1E8L17wPopyB8V?si=849bb536ec694ec0", 
-                    ConsoleKey.Enter      => "https://open.spotify.com/playlist/37i9dQZF1E4t3XGxrTxUnP?si=2c682136d6c74499", 
+                    ConsoleKey.UpArrow    => "https://open.spotify.com/playlist/6MnH6VND11BqWniGKso5cd?si=60267c1eb4654245", 
+                    ConsoleKey.DownArrow  => "https://open.spotify.com/playlist/6MnH6VND11BqWniGKso5cd?si=60267c1eb4654245", 
+                    ConsoleKey.LeftArrow  => "https://open.spotify.com/playlist/6MnH6VND11BqWniGKso5cd?si=60267c1eb4654245", 
+                    ConsoleKey.RightArrow => "https://open.spotify.com/playlist/6MnH6VND11BqWniGKso5cd?si=60267c1eb4654245", 
+                    ConsoleKey.Spacebar   => "https://open.spotify.com/playlist/6MnH6VND11BqWniGKso5cd?si=60267c1eb4654245", 
+                    ConsoleKey.Enter      => "https://open.spotify.com/playlist/6MnH6VND11BqWniGKso5cd?si=60267c1eb4654245", 
                     _ => ""
                 };
 
