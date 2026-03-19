@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using SpotifyAPI.Web;
 using SpotifyAPI.Web.Auth;
@@ -8,7 +7,6 @@ using Newtonsoft.Json;
 
 class Program
 {
-    // --- SPOTIFY INSTELLINGEN ---
     private static string clientId = "f135a36b32054ef49aac4c7e27554f85"; 
     private static string clientSecret = "fd4da5ce69b34becb9dd433c83e8e7dd"; 
     private static string credentialsPath = "credentials.json";
@@ -16,131 +14,94 @@ class Program
 
     static async Task Main()
     {
-        Console.WriteLine("--- Spotify Paal Controller (Makey Makey + API) ---");
-        
-        // Start de authenticatie flow
+        Console.WriteLine("--- Spotify Paal Controller (The Final Fix) ---");
         _ = Task.Run(() => StartSpotify());
 
-        // Wachten tot de client klaar is
-        while (_spotify == null) 
-        {
-            await Task.Delay(100);
-        }
+        while (_spotify == null) await Task.Delay(100);
 
-        Console.WriteLine("\nSysteem gereed! Raak een paal aan op de Makey Makey.");
-        Console.WriteLine("Toetsenbord mappings: Pijltjes, Spatie, Enter (Click).");
+        Console.WriteLine("\nSysteem gereed! Gebruik de Makey Makey.");
+
+        bool _isProcessing = false; 
 
         while (true)
         {
-            if (Console.KeyAvailable)
+            if (Console.KeyAvailable && !_isProcessing)
             {
                 var key = Console.ReadKey(true).Key;
                 
-                // HIER KOPPEL JE DE PLAYLISTS AAN DE PALEN
-                switch (key)
+                // VERVANG DEZE LINKS DOOR JOUW EIGEN SPOTIFY URI'S!
+                string playlistUri = key switch
                 {
-                    case ConsoleKey.UpArrow:    // Paal 1
-                        await SpeelPlaylist("https://open.spotify.com/playlist/37i9dQZF1DX4o1oenSJRJd?si=e3c312f2421d4b76");
-                        break;
-                    case ConsoleKey.DownArrow:  // Paal 2
-                        await SpeelPlaylist("https://open.spotify.com/playlist/37i9dQZF1DWVJyzEwVacEu?si=d882e56fb4544368");
-                        break;
-                    case ConsoleKey.LeftArrow:  // Paal 3
-                        await SpeelPlaylist("https://open.spotify.com/playlist/2ibgJKkjNvFac0zfIhftDw?si=660276ab3f6647df");
-                        break;
-                    case ConsoleKey.RightArrow: // Paal 4
-                        await SpeelPlaylist("https://open.spotify.com/playlist/61jNo7WKLOIQkahju8i0hw?si=8a9cc0d7237941cb");
-                        break;
-                    case ConsoleKey.Spacebar:   // Paal 5
-                        await SpeelPlaylist("https://open.spotify.com/playlist/5PWLyQD0eqfTW2hhRulHIX?si=5cd44ca9b7534982");
-                        break;
-                    case ConsoleKey.Enter:      // Paal 6 (De 'Click' aansluiting)
-                        await SpeelPlaylist("https://open.spotify.com/playlist/0GtaEQ91LENQitjz9IHj4g?si=bf839554a3e1424b");
-                        break;
+                    ConsoleKey.UpArrow    => "https://open.spotify.com/playlist/37i9dQZF1DX4o1oenSJRJd?si=1fa34d2732844f33", 
+                    ConsoleKey.DownArrow  => "https://open.spotify.com/playlist/2ibgJKkjNvFac0zfIhftDw?si=78e85b0b10334068", 
+                    ConsoleKey.LeftArrow  => "https://open.spotify.com/playlist/37i9dQZF1DWVJyzEwVacEu?si=16d4dc503e4e4445", 
+                    ConsoleKey.RightArrow => "https://open.spotify.com/playlist/37i9dQZF1E8LCKAL524VnW?si=04acda6b0e1e4a1e", 
+                    ConsoleKey.Spacebar   => "https://open.spotify.com/playlist/37i9dQZF1E8L17wPopyB8V?si=849bb536ec694ec0", 
+                    ConsoleKey.Enter      => "https://open.spotify.com/playlist/37i9dQZF1E4t3XGxrTxUnP?si=2c682136d6c74499", 
+                    _ => ""
+                };
+
+                if (!string.IsNullOrEmpty(playlistUri))
+                {
+                    _isProcessing = true; // LOCK: Negeer andere inputs
+                    await SpeelPlaylist(playlistUri);
+                    
+                    // Wacht 3 seconden zodat de Makey Makey niet blijft triggeren
+                    await Task.Delay(3000); 
+                    _isProcessing = false; // UNLOCK
                 }
             }
-            await Task.Delay(50); 
+            await Task.Delay(50);
         }
     }
 
     static async Task SpeelPlaylist(string playlistUri)
     {
         if (_spotify == null) return;
-
         try 
         {
-            // Zoek eerst naar beschikbare apparaten (zoals je laptop of speaker)
             var devicesResponse = await _spotify.Player.GetAvailableDevices();
             var devices = devicesResponse.Devices;
 
             if (devices.Count == 0)
             {
-                Console.WriteLine("WAARSCHUWING: Geen actief apparaat gevonden. Zet Spotify aan!");
+                Console.WriteLine("FOUT: Geen actief apparaat. Zet Spotify aan op je laptop!");
                 return;
             }
 
-            // Start de playlist op het eerste beschikbare apparaat
-            var request = new PlayerResumePlaybackRequest 
-            { 
+            // DIT IS DE OPDRACHT DIE ECHT OP 'PLAY' DRUKT
+            var request = new PlayerResumePlaybackRequest { 
                 ContextUri = playlistUri,
                 DeviceId = devices[0].Id 
             };
             
             await _spotify.Player.ResumePlayback(request);
-            Console.WriteLine($"Succes! Playlist gestart op {devices[0].Name}");
+            Console.WriteLine($"Aan het afspelen op: {devices[0].Name}");
         }
-        catch (Exception ex) 
-        { 
-            Console.WriteLine("Fout bij afspelen via API: " + ex.Message); 
-        }
+        catch (Exception ex) { Console.WriteLine("API Fout: " + ex.Message); }
     }
 
+    // --- AUTHENTICATIE LOGICA (Laat dit ongewijzigd) ---
     static async Task StartSpotify()
     {
-        // 1. Probeer bestaande credentials te laden
-        if (File.Exists(credentialsPath))
-        {
-            try 
-            {
+        if (File.Exists(credentialsPath)) {
+            try {
                 var json = await File.ReadAllTextAsync(credentialsPath);
                 var token = JsonConvert.DeserializeObject<AuthorizationCodeTokenResponse>(json);
-                var authenticator = new AuthorizationCodeAuthenticator(clientId, clientSecret, token!);
-                
-                var config = SpotifyClientConfig.CreateDefault().WithAuthenticator(authenticator);
+                var config = SpotifyClientConfig.CreateDefault().WithAuthenticator(new AuthorizationCodeAuthenticator(clientId, clientSecret, token!));
                 _spotify = new SpotifyClient(config);
-                Console.WriteLine("Ingelogd via opgeslagen gegevens.");
                 return;
-            }
-            catch { /* Token verlopen, start nieuwe login */ }
+            } catch { }
         }
-
-        // 2. Browser Login Flow
-        var server = new EmbedIOAuthServer(new Uri("http://127.0.0.1:5000/callback"), 5000);
+        var server = new EmbedIOAuthServer(new Uri("http://127.0.0.1:5005/callback"), 5005);
         await server.Start();
-
-        server.AuthorizationCodeReceived += async (sender, response) =>
-        {
-            var tokenResponse = await new OAuthClient().RequestToken(
-                new AuthorizationCodeTokenRequest(clientId, clientSecret, response.Code, server.BaseUri)
-            );
-
+        server.AuthorizationCodeReceived += async (sender, response) => {
+            var tokenResponse = await new OAuthClient().RequestToken(new AuthorizationCodeTokenRequest(clientId, clientSecret, response.Code, server.BaseUri));
             await File.WriteAllTextAsync(credentialsPath, JsonConvert.SerializeObject(tokenResponse));
-            
-            var config = SpotifyClientConfig.CreateDefault().WithAuthenticator(new AuthorizationCodeAuthenticator(clientId, clientSecret, tokenResponse));
-            _spotify = new SpotifyClient(config);
-            
+            _spotify = new SpotifyClient(SpotifyClientConfig.CreateDefault().WithAuthenticator(new AuthorizationCodeAuthenticator(clientId, clientSecret, tokenResponse)));
             await server.Stop();
-            Console.WriteLine("Spotify succesvol gekoppeld!");
         };
-
-        var request = new LoginRequest(server.BaseUri, clientId, LoginRequest.ResponseType.Code)
-        {
-            Scope = new[] { 
-                Scopes.UserReadPlaybackState, 
-                Scopes.UserModifyPlaybackState, 
-                Scopes.PlaylistReadPrivate 
-            }
-        };
-        BrowserUtil.Open(request.ToUri());
+        var loginRequest = new LoginRequest(server.BaseUri, clientId, LoginRequest.ResponseType.Code) { Scope = new[] { Scopes.UserReadPlaybackState, Scopes.UserModifyPlaybackState } };
+        BrowserUtil.Open(loginRequest.ToUri());
     }
 }
