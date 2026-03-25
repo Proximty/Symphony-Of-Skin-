@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 using SpotifyAPI.Web;
@@ -19,99 +20,94 @@ class Program
 
     static async Task Main()
     {
-        Console.WriteLine("--- Spotify Paal Controller (Hold to Play + Auto-Device) ---");
+        Console.WriteLine("--- Spotify Paal Controller (Super Combo Mode) ---");
         await StartSpotify();
         while (_spotify == null) await Task.Delay(100);
 
-        Console.WriteLine("\nSysteem gereed! Houd een contact vast.");
+        Console.WriteLine("\nSysteem gereed! Probeer verschillende combinaties.");
 
         bool isPlaying = false;
-        int activeKey = 0;
+        string currentUri = "";
 
         while (true)
         {
-            int pressedKey = GetPressedKey();
+            var pressedKeys = GetPressedKeys();
 
-            if (pressedKey != 0 && !isPlaying)
+            if (pressedKeys.Count > 0)
             {
-                string uri = GetUriForKey(pressedKey);
-                if (!string.IsNullOrEmpty(uri))
+                // Bepaal de playlist op basis van de specifieke combinatie
+                string targetUri = GetPlaylistForCombo(pressedKeys);
+
+                if (!string.IsNullOrEmpty(targetUri) && currentUri != targetUri)
                 {
-                    // FIX: Zoek eerst een apparaat voordat we proberen te spelen
-                    var deviceId = await GetActiveDeviceId();
-                    
-                    if (deviceId != null)
-                    {
-                        try {
-                            Console.WriteLine($"\n[AANRAKING] Starten op apparaat...");
-                            await _spotify.Player.ResumePlayback(new PlayerResumePlaybackRequest { 
-                                ContextUri = uri,
-                                DeviceId = deviceId // Dwing Spotify om dit apparaat te gebruiken
-                            });
-                            isPlaying = true;
-                            activeKey = pressedKey;
-                        }
-                        catch (Exception ex) { Console.WriteLine("Fout bij starten: " + ex.Message); }
-                    }
-                    else {
-                        Console.WriteLine("FOUT: Geen actieve Spotify app gevonden. Zet Spotify aan!");
-                        await Task.Delay(2000); // Wacht even voor de volgende check
-                    }
+                    Console.WriteLine($"\n[MODUS] Combinatie herkend: {string.Join(" + ", pressedKeys)}");
+                    await Play(targetUri);
+                    isPlaying = true;
+                    currentUri = targetUri;
                 }
             }
-            else if (isPlaying && (GetAsyncKeyState(activeKey) >= 0))
+            else if (isPlaying)
             {
-                try {
-                    Console.WriteLine("[LOSGELATEN] Pauzeren...");
-                    await _spotify.Player.PausePlayback();
-                } catch { /* Al gepauzeerd of apparaat weg */ }
-                
+                Console.WriteLine("[LOSGELATEN] Pauzeren...");
+                try { await _spotify.Player.PausePlayback(); } catch { }
                 isPlaying = false;
-                activeKey = 0;
+                currentUri = "";
                 await Task.Delay(200); 
             }
 
-            await Task.Delay(50);
+            await Task.Delay(100);
         }
     }
 
-    // Hulpmiddel om het ID van je laptop/telefoon op te halen
-    static async Task<string?> GetActiveDeviceId()
+    // HIER VOEG JE JOUW COMBO'S TOE
+    static string GetPlaylistForCombo(List<int> keys)
     {
-        try {
-            var devices = await _spotify!.Player.GetAvailableDevices();
-            // Pak het eerste apparaat dat beschikbaar is
-            return devices.Devices.FirstOrDefault()?.Id;
-        } catch { return null; }
-    }
+        // Sorteer de lijst zodat de volgorde van indrukken niet uitmaakt
+        keys.Sort();
+        string comboId = string.Join(",", keys);
 
-    static int GetPressedKey()
-    {
-        if (GetAsyncKeyState(0x26) < 0) return 0x26; // Up
-        if (GetAsyncKeyState(0x28) < 0) return 0x28; // Down
-        if (GetAsyncKeyState(0x25) < 0) return 0x25; // Left
-        if (GetAsyncKeyState(0x27) < 0) return 0x27; // Right
-        if (GetAsyncKeyState(0x20) < 0) return 0x20; // Space
-        if (GetAsyncKeyState(0x0D) < 0) return 0x0D; // Enter
-        return 0;
-    }
-
-    static string GetUriForKey(int vKey)
-    {
-        return vKey switch
+        return comboId switch
         {
-            0x26 => "https://open.spotify.com/playlist/37i9dQZF1EVJSvZp5AOML2?si=28abb051846241fd", 
-            0x28 => "spotify:playlist:37i9dQZF1DX0XUsKG7PBeI", 
-            0x25 => "spotify:playlist:37i9dQZF1DX4dyzvuaB0nB", 
-            0x27 => "spotify:playlist:37i9dQZF1DXcF6BvY9tqeC", 
-            0x20 => "spotify:playlist:37i9dQZF1DX1s9vYpYpXqf", 
-            0x0D => "spotify:playlist:37i9dQZF1DX4sWvAiTbnO3", 
-            _ => ""
+            // --- GEHEIME COMBO'S (2 of meer toetsen) ---
+            "38,40"       => "https://open.spotify.com/playlist/37i9dQZF1EIgG2NEOhqsD7?si=bd6c466a80bc4155", // Up + Down
+            "37,39"       => "spotify:playlist:PLAYLIST_ID_VOOR_LEFT_EN_RIGHT", // Left + Right
+            "32,38"    => "spotify:playlist:PLAYLIST_ID_VOOR_SPACE_UP_DOWN", // Space + Up 
+            
+            // --- NORMALE TOETSEN (1 toets) ---
+            "38" => "https://open.spotify.com/playlist/37i9dQZF1EVJSvZp5AOML2?si=7d685ee88d9c42dc", // Up
+            "40" => "https://open.spotify.com/playlist/37i9dQZF1DX4o1oenSJRJd?si=24a6f50d36d64e54", // Down
+            "37" => "spotify:playlist:37i9dQZF1DX4dyzvuaB0nB", // Left
+            "39" => "spotify:playlist:37i9dQZF1DXcF6BvY9tqeC", // Right
+            "32" => "spotify:playlist:37i9dQZF1DX1s9vYpYpXqf", // Space
+            "13" => "spotify:playlist:37i9dQZF1DX4sWvAiTbnO3", // Enter
+            
+            _ => "" // Geen match? Doe niets.
         };
     }
 
-    static async Task StartSpotify()
+    static List<int> GetPressedKeys()
     {
+        int[] keysToCheck = { 38, 40, 37, 39, 32, 13 }; // Up, Down, Left, Right, Space, Enter
+        var pressed = new List<int>();
+        foreach (var key in keysToCheck) { if (GetAsyncKeyState(key) < 0) pressed.Add(key); }
+        return pressed;
+    }
+
+    // --- STANDAARD HELPER FUNCTIES (Device & Auth) ---
+    static async Task Play(string uri)
+    {
+        var deviceId = await GetActiveDeviceId();
+        if (deviceId != null) {
+            try { await _spotify!.Player.ResumePlayback(new PlayerResumePlaybackRequest { ContextUri = uri, DeviceId = deviceId }); }
+            catch (Exception ex) { Console.WriteLine("Fout: " + ex.Message); }
+        }
+    }
+
+    static async Task<string?> GetActiveDeviceId() {
+        try { var devices = await _spotify!.Player.GetAvailableDevices(); return devices.Devices.FirstOrDefault()?.Id; } catch { return null; }
+    }
+
+    static async Task StartSpotify() {
         if (File.Exists(credentialsPath)) {
             try {
                 var json = await File.ReadAllTextAsync(credentialsPath);
