@@ -20,11 +20,11 @@ class Program
 
     static async Task Main()
     {
-        Console.WriteLine("--- Spotify Paal Controller (Super Combo Mode) ---");
+        Console.WriteLine("--- Spotify Paal Controller (Makey Makey Click Mode) ---");
         await StartSpotify();
         while (_spotify == null) await Task.Delay(100);
 
-        Console.WriteLine("\nSysteem gereed! Probeer verschillende combinaties.");
+        Console.WriteLine("\nSysteem gereed! Gebruik de pijltjes of de CLICK op de Makey Makey.");
 
         bool isPlaying = false;
         string currentUri = "";
@@ -35,12 +35,14 @@ class Program
 
             if (pressedKeys.Count > 0)
             {
-                // Bepaal de playlist op basis van de specifieke combinatie
                 string targetUri = GetPlaylistForCombo(pressedKeys);
 
                 if (!string.IsNullOrEmpty(targetUri) && currentUri != targetUri)
                 {
-                    Console.WriteLine($"\n[MODUS] Combinatie herkend: {string.Join(" + ", pressedKeys)}");
+                    // Toon "Click" in de console als key 1 wordt ingedrukt
+                    var displayKeys = pressedKeys.Select(k => k == 1 ? "Click" : k.ToString());
+                    Console.WriteLine($"\n[MODUS] Combinatie herkend: {string.Join(" + ", displayKeys)}");
+                    
                     await Play(targetUri);
                     isPlaying = true;
                     currentUri = targetUri;
@@ -59,41 +61,39 @@ class Program
         }
     }
 
-    // HIER VOEG JE JOUW COMBO'S TOE
     static string GetPlaylistForCombo(List<int> keys)
     {
-        // Sorteer de lijst zodat de volgorde van indrukken niet uitmaakt
         keys.Sort();
         string comboId = string.Join(",", keys);
 
         return comboId switch
         {
-            // --- GEHEIME COMBO'S (2 of meer toetsen) ---
-            "38,40"       => "https://open.spotify.com/playlist/37i9dQZF1EIgG2NEOhqsD7?si=bd6c466a80bc4155", // Up + Down
-            "37,39"       => "spotify:playlist:PLAYLIST_ID_VOOR_LEFT_EN_RIGHT", // Left + Right
-            "32,38"    => "spotify:playlist:PLAYLIST_ID_VOOR_SPACE_UP_DOWN", // Space + Up 
+            // --- GEHEIME COMBO'S ---
+            "38,40" => "https://open.spotify.com/playlist/37i9dQZF1EIgG2NEOhqsD7?si=bd6c466a80bc4155", 
+            "37,39" => "https://open.spotify.com/playlist/37i9dQZF1EQqedj0y9Uwvu?si=c6ac4c4f9d6b422a", 
+            "1,32"  => "https://open.spotify.com/playlist/37i9dQZF1EIghjZV03OkEv?si=19f8d6ffd07743c3", // Click + Space
             
-            // --- NORMALE TOETSEN (1 toets) ---
+            // --- NORMALE TOETSEN ---
+            "1"  => "https://open.spotify.com/playlist/37i9dQZF1E3517hW8wnMUj?si=19ab49be08b442d9", // Linkermuisklik (Makey Makey Click)
             "38" => "https://open.spotify.com/playlist/37i9dQZF1EVJSvZp5AOML2?si=7d685ee88d9c42dc", // Up
-            "40" => "https://open.spotify.com/playlist/37i9dQZF1DX4o1oenSJRJd?si=24a6f50d36d64e54", // Down
-            "37" => "spotify:playlist:37i9dQZF1DX4dyzvuaB0nB", // Left
-            "39" => "spotify:playlist:37i9dQZF1DXcF6BvY9tqeC", // Right
-            "32" => "spotify:playlist:37i9dQZF1DX1s9vYpYpXqf", // Space
-            "13" => "spotify:playlist:37i9dQZF1DX4sWvAiTbnO3", // Enter
+            "40" => "https://open.spotify.com/playlist/2ibgJKkjNvFac0zfIhftDw?si=fcf91eb297694e36", // Down
+            "37" => "https://open.spotify.com/playlist/37i9dQZEVXcP53YF7Dzbvj?si=a4ff4f4160504681",    // Left
+            "39" => "https://open.spotify.com/playlist/61jNo7WKLOIQkahju8i0hw?si=cddf24329e11472a",    // Right
+            "32" => "https://open.spotify.com/playlist/37i9dQZF1E3ajQz6d6ih8u?si=73fea0cefe6d4620",    // Space
             
-            _ => "" // Geen match? Doe niets.
+            _ => "" 
         };
     }
 
     static List<int> GetPressedKeys()
     {
-        int[] keysToCheck = { 38, 40, 37, 39, 32, 13 }; // Up, Down, Left, Right, Space, Enter
+        // 1 is de code voor de 'Click' actie van de Makey Makey
+        int[] keysToCheck = { 1, 38, 40, 37, 39, 32 }; 
         var pressed = new List<int>();
         foreach (var key in keysToCheck) { if (GetAsyncKeyState(key) < 0) pressed.Add(key); }
         return pressed;
     }
 
-    // --- STANDAARD HELPER FUNCTIES (Device & Auth) ---
     static async Task Play(string uri)
     {
         var deviceId = await GetActiveDeviceId();
