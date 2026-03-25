@@ -9,18 +9,18 @@ class PaalMuziek
 {
     // Mappen per toets (gebruik ConsoleKey voor Makey Makey op de Pi)
     static Dictionary<ConsoleKey, string> mappen = new() {
-        { ConsoleKey.UpArrow,    "/muziek/paal1" },
-        { ConsoleKey.DownArrow,  "/muziek/paal2" },
-        { ConsoleKey.LeftArrow,  "/muziek/paal3" },
-        { ConsoleKey.RightArrow, "/muziek/paal4" },
-        { ConsoleKey.Spacebar,   "/muziek/paal5" },
-        { ConsoleKey.W,          "/muziek/paal6" }
+        { ConsoleKey.UpArrow,    "/muziek/2000s" },
+        { ConsoleKey.DownArrow,  "/muziek/2010s" },
+        { ConsoleKey.LeftArrow,  "/muziek/Anime" },
+        { ConsoleKey.RightArrow, "/muziek/EDM" },
+        { ConsoleKey.Spacebar,   "/muziek/Game" },
+        { ConsoleKey.W,          "/muziek/Pop" }
     };
 
     // Jouw combo structuur (getallen zijn de (int)ConsoleKey waarden)
     static Dictionary<string, string> comboMappen = new() {
         { "37,39", "/muziek/secret1" }, // Left + Right
-        { "38,40", "/muziek/secret2" }, // Up + Down
+        { "38,40", "/muziek/Secret" }, // Up + Down
         { "32,38", "/muziek/secret3" }  // Space + Up 
     };
 

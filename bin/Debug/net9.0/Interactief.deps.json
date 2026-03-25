@@ -11,7 +11,8 @@
           "Newtonsoft.Json": "13.0.4",
           "SharpHook": "7.1.1",
           "SpotifyAPI.Web": "7.4.2",
-          "SpotifyAPI.Web.Auth": "7.4.2"
+          "SpotifyAPI.Web.Auth": "7.4.2",
+          "System.Device.Gpio": "4.1.0"
         },
         "runtime": {
           "Interactief.dll": {}
@@ -119,6 +120,14 @@
           }
         }
       },
+      "System.Device.Gpio/4.1.0": {
+        "runtime": {
+          "lib/net8.0/System.Device.Gpio.dll": {
+            "assemblyVersion": "4.1.0.0",
+            "fileVersion": "4.100.26.5901"
+          }
+        }
+      },
       "Unosquare.Swan.Lite/3.1.0": {
         "runtime": {
           "lib/netstandard2.0/Swan.Lite.dll": {
@@ -169,6 +178,13 @@
       "sha512": "sha512-+Og2S4d8Q/lrZsBXlgPt0FieigtzVHj1Lg6+eDF+5RwVpKsfwQjW7aVfaDyktVCo56T2qOBjbqC/XluIxXGJgQ==",
       "path": "spotifyapi.web.auth/7.4.2",
       "hashPath": "spotifyapi.web.auth.7.4.2.nupkg.sha512"
+    },
+    "System.Device.Gpio/4.1.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-Ip7o1kJ8B/UL5+7/21treDxue2/5Is6bfC3KWEBEYX5LH8jvRiypL1Muoe4HdEHa728Ge6t+5PZ7x02ibPp5Jg==",
+      "path": "system.device.gpio/4.1.0",
+      "hashPath": "system.device.gpio.4.1.0.nupkg.sha512"
     },
     "Unosquare.Swan.Lite/3.1.0": {
       "type": "package",
