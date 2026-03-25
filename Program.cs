@@ -1,6 +1,8 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
+using System.Runtime.InteropServices;
 using SpotifyAPI.Web;
 using SpotifyAPI.Web.Auth;
 using Newtonsoft.Json;
@@ -12,84 +14,109 @@ class Program
     private static string credentialsPath = "credentials.json";
     private static SpotifyClient? _spotify;
 
+    [DllImport("user32.dll")]
+    public static extern short GetAsyncKeyState(int vKey);
+
     static async Task Main()
     {
-        Console.WriteLine("--- Spotify Paal Controller (The Final Fix) ---");
-        _ = Task.Run(() => StartSpotify());
-
+        Console.WriteLine("--- Spotify Paal Controller (Hold to Play + Auto-Device) ---");
+        await StartSpotify();
         while (_spotify == null) await Task.Delay(100);
 
-        Console.WriteLine("\nSysteem gereed! Gebruik de Makey Makey.");
+        Console.WriteLine("\nSysteem gereed! Houd een contact vast.");
 
-        bool _isProcessing = false; 
+        bool isPlaying = false;
+        int activeKey = 0;
 
         while (true)
         {
-            if (Console.KeyAvailable && !_isProcessing)
-            {
-                var key = Console.ReadKey(true).Key;
-                
-                // VERVANG DEZE LINKS DOOR JOUW EIGEN SPOTIFY URI'S!
-                string playlistUri = key switch
-                {
-                    ConsoleKey.UpArrow    => "https://open.spotify.com/playlist/37i9dQZF1DX4o1oenSJRJd?si=1fa34d2732844f33", 
-                    ConsoleKey.DownArrow  => "https://open.spotify.com/playlist/2ibgJKkjNvFac0zfIhftDw?si=78e85b0b10334068", 
-                    ConsoleKey.LeftArrow  => "https://open.spotify.com/playlist/37i9dQZF1DWVJyzEwVacEu?si=16d4dc503e4e4445", 
-                    ConsoleKey.RightArrow => "https://open.spotify.com/playlist/37i9dQZF1E8LCKAL524VnW?si=04acda6b0e1e4a1e", 
-                    ConsoleKey.Spacebar   => "https://open.spotify.com/playlist/37i9dQZF1E8L17wPopyB8V?si=849bb536ec694ec0", 
-                    ConsoleKey.Enter      => "https://open.spotify.com/playlist/37i9dQZF1E4t3XGxrTxUnP?si=2c682136d6c74499", 
-                    _ => ""
-                };
+            int pressedKey = GetPressedKey();
 
-                if (!string.IsNullOrEmpty(playlistUri))
+            if (pressedKey != 0 && !isPlaying)
+            {
+                string uri = GetUriForKey(pressedKey);
+                if (!string.IsNullOrEmpty(uri))
                 {
-                    _isProcessing = true; // LOCK: Negeer andere inputs
-                    await SpeelPlaylist(playlistUri);
+                    // FIX: Zoek eerst een apparaat voordat we proberen te spelen
+                    var deviceId = await GetActiveDeviceId();
                     
-                    // Wacht 3 seconden zodat de Makey Makey niet blijft triggeren
-                    await Task.Delay(3000); 
-                    _isProcessing = false; // UNLOCK
+                    if (deviceId != null)
+                    {
+                        try {
+                            Console.WriteLine($"\n[AANRAKING] Starten op apparaat...");
+                            await _spotify.Player.ResumePlayback(new PlayerResumePlaybackRequest { 
+                                ContextUri = uri,
+                                DeviceId = deviceId // Dwing Spotify om dit apparaat te gebruiken
+                            });
+                            isPlaying = true;
+                            activeKey = pressedKey;
+                        }
+                        catch (Exception ex) { Console.WriteLine("Fout bij starten: " + ex.Message); }
+                    }
+                    else {
+                        Console.WriteLine("FOUT: Geen actieve Spotify app gevonden. Zet Spotify aan!");
+                        await Task.Delay(2000); // Wacht even voor de volgende check
+                    }
                 }
             }
+            else if (isPlaying && (GetAsyncKeyState(activeKey) >= 0))
+            {
+                try {
+                    Console.WriteLine("[LOSGELATEN] Pauzeren...");
+                    await _spotify.Player.PausePlayback();
+                } catch { /* Al gepauzeerd of apparaat weg */ }
+                
+                isPlaying = false;
+                activeKey = 0;
+                await Task.Delay(200); 
+            }
+
             await Task.Delay(50);
         }
     }
 
-    static async Task SpeelPlaylist(string playlistUri)
+    // Hulpmiddel om het ID van je laptop/telefoon op te halen
+    static async Task<string?> GetActiveDeviceId()
     {
-        if (_spotify == null) return;
-        try 
-        {
-            var devicesResponse = await _spotify.Player.GetAvailableDevices();
-            var devices = devicesResponse.Devices;
-
-            if (devices.Count == 0)
-            {
-                Console.WriteLine("FOUT: Geen actief apparaat. Zet Spotify aan op je laptop!");
-                return;
-            }
-
-            // DIT IS DE OPDRACHT DIE ECHT OP 'PLAY' DRUKT
-            var request = new PlayerResumePlaybackRequest { 
-                ContextUri = playlistUri,
-                DeviceId = devices[0].Id 
-            };
-            
-            await _spotify.Player.ResumePlayback(request);
-            Console.WriteLine($"Aan het afspelen op: {devices[0].Name}");
-        }
-        catch (Exception ex) { Console.WriteLine("API Fout: " + ex.Message); }
+        try {
+            var devices = await _spotify!.Player.GetAvailableDevices();
+            // Pak het eerste apparaat dat beschikbaar is
+            return devices.Devices.FirstOrDefault()?.Id;
+        } catch { return null; }
     }
 
-    // --- AUTHENTICATIE LOGICA (Laat dit ongewijzigd) ---
+    static int GetPressedKey()
+    {
+        if (GetAsyncKeyState(0x26) < 0) return 0x26; // Up
+        if (GetAsyncKeyState(0x28) < 0) return 0x28; // Down
+        if (GetAsyncKeyState(0x25) < 0) return 0x25; // Left
+        if (GetAsyncKeyState(0x27) < 0) return 0x27; // Right
+        if (GetAsyncKeyState(0x20) < 0) return 0x20; // Space
+        if (GetAsyncKeyState(0x0D) < 0) return 0x0D; // Enter
+        return 0;
+    }
+
+    static string GetUriForKey(int vKey)
+    {
+        return vKey switch
+        {
+            0x26 => "https://open.spotify.com/playlist/37i9dQZF1EVJSvZp5AOML2?si=28abb051846241fd", 
+            0x28 => "spotify:playlist:37i9dQZF1DX0XUsKG7PBeI", 
+            0x25 => "spotify:playlist:37i9dQZF1DX4dyzvuaB0nB", 
+            0x27 => "spotify:playlist:37i9dQZF1DXcF6BvY9tqeC", 
+            0x20 => "spotify:playlist:37i9dQZF1DX1s9vYpYpXqf", 
+            0x0D => "spotify:playlist:37i9dQZF1DX4sWvAiTbnO3", 
+            _ => ""
+        };
+    }
+
     static async Task StartSpotify()
     {
         if (File.Exists(credentialsPath)) {
             try {
                 var json = await File.ReadAllTextAsync(credentialsPath);
                 var token = JsonConvert.DeserializeObject<AuthorizationCodeTokenResponse>(json);
-                var config = SpotifyClientConfig.CreateDefault().WithAuthenticator(new AuthorizationCodeAuthenticator(clientId, clientSecret, token!));
-                _spotify = new SpotifyClient(config);
+                _spotify = new SpotifyClient(SpotifyClientConfig.CreateDefault().WithAuthenticator(new AuthorizationCodeAuthenticator(clientId, clientSecret, token!)));
                 return;
             } catch { }
         }
@@ -101,7 +128,6 @@ class Program
             _spotify = new SpotifyClient(SpotifyClientConfig.CreateDefault().WithAuthenticator(new AuthorizationCodeAuthenticator(clientId, clientSecret, tokenResponse)));
             await server.Stop();
         };
-        var loginRequest = new LoginRequest(server.BaseUri, clientId, LoginRequest.ResponseType.Code) { Scope = new[] { Scopes.UserReadPlaybackState, Scopes.UserModifyPlaybackState } };
-        BrowserUtil.Open(loginRequest.ToUri());
+        BrowserUtil.Open(new LoginRequest(server.BaseUri, clientId, LoginRequest.ResponseType.Code) { Scope = new[] { Scopes.UserReadPlaybackState, Scopes.UserModifyPlaybackState } }.ToUri());
     }
 }
