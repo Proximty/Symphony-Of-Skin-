@@ -119,6 +119,19 @@
           }
         }
       },
+      "System.Device.Gpio/4.1.0": {
+        "type": "package",
+        "compile": {
+          "lib/net8.0/System.Device.Gpio.dll": {
+            "related": ".pdb;.xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/System.Device.Gpio.dll": {
+            "related": ".pdb;.xml"
+          }
+        }
+      },
       "System.ValueTuple/4.5.0": {
         "type": "package",
         "compile": {
@@ -275,6 +288,23 @@
         "spotifyapi.web.auth.nuspec"
       ]
     },
+    "System.Device.Gpio/4.1.0": {
+      "sha512": "Ip7o1kJ8B/UL5+7/21treDxue2/5Is6bfC3KWEBEYX5LH8jvRiypL1Muoe4HdEHa728Ge6t+5PZ7x02ibPp5Jg==",
+      "type": "package",
+      "path": "system.device.gpio/4.1.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "README.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "lib/net8.0/System.Device.Gpio.dll",
+        "lib/net8.0/System.Device.Gpio.pdb",
+        "lib/net8.0/System.Device.Gpio.xml",
+        "system.device.gpio.4.1.0.nupkg.sha512",
+        "system.device.gpio.nuspec"
+      ]
+    },
     "System.ValueTuple/4.5.0": {
       "sha512": "okurQJO6NRE/apDIP23ajJ0hpiNmJ+f0BwOlB/cSqTLQlw5upkf+5+96+iG2Jw40G1fCVCyPz/FhIABUjMR+RQ==",
       "type": "package",
@@ -340,7 +370,8 @@
       "Newtonsoft.Json >= 13.0.4",
       "SharpHook >= 7.1.1",
       "SpotifyAPI.Web >= 7.4.2",
-      "SpotifyAPI.Web.Auth >= 7.4.2"
+      "SpotifyAPI.Web.Auth >= 7.4.2",
+      "System.Device.Gpio >= 4.1.0"
     ]
   },
   "packageFolders": {
@@ -409,6 +440,10 @@
           "SpotifyAPI.Web.Auth": {
             "target": "Package",
             "version": "[7.4.2, )"
+          },
+          "System.Device.Gpio": {
+            "target": "Package",
+            "version": "[4.1.0, )"
           }
         },
         "imports": [
