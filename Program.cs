@@ -3,136 +3,142 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
 class PaalMuziek
 {
+    // PAD NAAR DE MAKEY MAKEY (gebaseerd op jouw output)
+    static string devicePath = "/dev/input/event6"; 
     static string basisPad = Path.Combine(Directory.GetCurrentDirectory(), "muziek");
     static Random rng = new Random();
-    
-    // Deze teller voorkomt dat de muziek stopt bij kleine haperingen van de Makey Makey
-    static int stilteTeller = 0;
-    const int MAX_STILTE = 3; // 3 x 150ms = 450ms buffer
 
-    static Dictionary<ConsoleKey, string> mappen = new() {
-        { ConsoleKey.UpArrow,    "2000s" },
-        { ConsoleKey.DownArrow,  "2010s" },
-        { ConsoleKey.LeftArrow,  "Anime" },
-        { ConsoleKey.RightArrow, "EDM" },
-        { ConsoleKey.Spacebar,   "Game" },
-        { ConsoleKey.W,          "Pop" }
-    };
-
-    static Dictionary<string, string> comboMappen = new() {
-        { "37,39", "secret1" }, 
-        { "38,40", "Secret" }, 
-        { "32,38", "secret3" }  
+    // RUWE LINUX CODES (Makey Makey / Keyboard event codes)
+    static Dictionary<int, string> mappen = new() {
+        { 103, "2000s" }, // Up Arrow
+        { 108, "2010s" }, // Down Arrow
+        { 105, "Anime" }, // Left Arrow
+        { 106, "EDM" },   // Right Arrow
+        { 57,  "Game" },  // Spacebar
+        { 17,  "Pop" }    // W-key
     };
 
     static List<Process> actieveSpelers = new();
     static string huidigeActieveCombo = "";
     static HashSet<int> ingedrukteToetsen = new();
+    static int stilteTeller = 0;
+
+    // Struct voor Linux Input Events
+    [StructLayout(LayoutKind.Sequential)]
+    struct InputEvent {
+        public long TimeSec;
+        public long TimeUSec;
+        public ushort Type;
+        public ushort Code;
+        public int Value;
+    }
 
     static async Task Main()
     {
-        Console.WriteLine("--- Muziekpaal: Gecorrigeerde Modus ---");
-        Console.WriteLine($"Pad: {basisPad}");
+        Console.WriteLine("--- Muziekpaal: Direct Device Mode (event6) ---");
         
-        if (!Directory.Exists(basisPad)) Directory.CreateDirectory(basisPad);
+        if (!File.Exists(devicePath)) {
+            Console.WriteLine($"FOUT: {devicePath} niet gevonden! Probeer: sudo dotnet run");
+            return;
+        }
+
+        // Start het lezen van de Makey Makey in de achtergrond
+        _ = Task.Run(() => LeesRawInput());
 
         while (true)
         {
-            // 1. Input opvangen
-            while (Console.KeyAvailable) 
-            {
-                var key = Console.ReadKey(true).Key;
-                if (mappen.ContainsKey(key)) 
-                {
-                    ingedrukteToetsen.Add((int)key);
-                    stilteTeller = 0; // Reset teller bij input
-                }
+            List<int> lijst;
+            lock (ingedrukteToetsen) {
+                lijst = ingedrukteToetsen.OrderBy(x => x).ToList();
             }
 
-            var lijst = ingedrukteToetsen.OrderBy(x => x).ToList();
-            string comboId = string.Join(",", lijst);
-
-            // 2. Afspeel logica
             if (lijst.Count > 0)
             {
+                string comboId = string.Join(",", lijst);
                 if (comboId != huidigeActieveCombo)
                 {
-                    string? categorieMap = null;
-                    if (comboMappen.ContainsKey(comboId)) categorieMap = comboMappen[comboId];
-                    else if (lijst.Count == 1) categorieMap = mappen[(ConsoleKey)lijst[0]];
-
-                    if (categorieMap != null) 
+                    // Alleen de eerste toets uit de lijst pakken voor de map (of pas combo-logica aan)
+                    if (mappen.ContainsKey(lijst[0])) 
                     {
-                        SpeelEénTrackUitMap(Path.Combine(basisPad, categorieMap));
+                        SpeelEénTrackUitMap(Path.Combine(basisPad, mappen[lijst[0]]));
                     }
                     huidigeActieveCombo = comboId;
+                    stilteTeller = 0;
                 }
             }
-            else 
+            else if (huidigeActieveCombo != "")
             {
-                // Alleen stoppen als er een tijdje GEEN input is geweest (Sustain)
                 stilteTeller++;
-                if (stilteTeller >= MAX_STILTE && huidigeActieveCombo != "")
-                {
+                if (stilteTeller > 3) {
                     StopAlleMuziek();
                     huidigeActieveCombo = "";
                 }
             }
 
-            // 3. Wachten en lijst legen voor de volgende check
-            await Task.Delay(150); 
-            ingedrukteToetsen.Clear();
+            await Task.Delay(100);
+        }
+    }
+
+    static void LeesRawInput()
+    {
+        try {
+            using FileStream fs = new FileStream(devicePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            int size = Marshal.SizeOf<InputEvent>();
+            byte[] buffer = new byte[size];
+
+            while (true) {
+                fs.Read(buffer, 0, buffer.Length);
+                IntPtr ptr = Marshal.AllocHGlobal(size);
+                Marshal.Copy(buffer, 0, ptr, size);
+                InputEvent ev = Marshal.PtrToStructure<InputEvent>(ptr);
+                Marshal.FreeHGlobal(ptr);
+
+                if (ev.Type == 1) { // EV_KEY
+                    lock (ingedrukteToetsen) {
+                        if (ev.Value == 1 || ev.Value == 2) ingedrukteToetsen.Add(ev.Code);
+                        else if (ev.Value == 0) ingedrukteToetsen.Remove(ev.Code);
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            Console.WriteLine($"Input Fout: {ex.Message}");
         }
     }
 
     static void SpeelEénTrackUitMap(string categoriePad)
     {
         if (!Directory.Exists(categoriePad)) return;
-
         var fragmenten = Directory.GetFiles(categoriePad, "*.mp3");
         if (fragmenten.Length == 0) return;
 
-        string gekozenTrack = fragmenten[rng.Next(fragmenten.Length)];
-
+        string track = fragmenten[rng.Next(fragmenten.Length)];
         StopAlleMuziek();
-        Console.WriteLine($"[PLAY] {Path.GetFileName(gekozenTrack)}");
 
+        Console.WriteLine($"[PLAY] {Path.GetFileName(track)}");
         try {
-            var psi = new ProcessStartInfo
-            {
+            var psi = new ProcessStartInfo {
                 FileName = "mpg123",
-                Arguments = $"-q \"{gekozenTrack}\"", 
+                Arguments = $"-o alsa -q \"{track}\"", // Forceer audio naar box
                 UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
                 CreateNoWindow = true
             };
-
             var p = Process.Start(psi);
             if (p != null) actieveSpelers.Add(p);
-        } catch (Exception ex) {
-            Console.WriteLine($"Fout bij starten: {ex.Message}");
-        }
+        } catch (Exception ex) { Console.WriteLine($"Fout: {ex.Message}"); }
     }
 
     static void StopAlleMuziek()
     {
         if (actieveSpelers.Count == 0) return;
-        
         Console.WriteLine("[STOP]");
-        foreach (var p in actieveSpelers)
-        {
-            try { 
-                if (!p.HasExited) p.Kill(true); 
-                p.Dispose(); 
-            } catch { }
+        foreach (var p in actieveSpelers) {
+            try { if (!p.HasExited) p.Kill(); p.Dispose(); } catch { }
         }
         actieveSpelers.Clear();
-
-        // Killall weggelaten om "no process found" meldingen te voorkomen
     }
 }
