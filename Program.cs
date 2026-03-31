@@ -8,19 +8,17 @@ using System.Threading.Tasks;
 
 class PaalMuziek
 {
-    // Check dit pad goed: staat er een extra '-' achter Symphony-Of-Skin?
     static string devicePath = "/dev/input/event2"; 
     static string basisPad = "/home/admin/Symphony-Of-Skin-/muziek"; 
     static Random rng = new Random();
 
-    // Mapping van Makey Makey (Arduino) codes naar mapnamen
     static Dictionary<int, string> mappen = new() {
-        { 103, "2000s" }, // Omhoog
-        { 108, "2010s" }, // Omlaag
-        { 105, "Anime" }, // Links
-        { 106, "EDM"   }, // Rechts
-        { 57,  "Game"  }, // Spatie
-        { 17,  "Pop"   }  // W
+        { 103, "2000s" },
+        { 108, "2010s" },
+        { 105, "Anime" },
+        { 106, "EDM"   },
+        { 57,  "Game"  },
+        { 17,  "Pop"   }
     };
 
     static List<Process> actieveSpelers = new();
@@ -36,16 +34,13 @@ class PaalMuziek
 
     static async Task Main()
     {
-        Console.WriteLine("--- Muziekpaal: AIR 192 Fix ---");
-        Console.WriteLine($"Zoek naar muziek in: {basisPad}");
+        Console.WriteLine("--- Muziekpaal: AIR 192 & MPV Fix ---");
 
-        // Controleer of de hoofdmap bestaat
         if (!Directory.Exists(basisPad)) {
             Console.WriteLine($"FOUT: De hoofdmap {basisPad} bestaat niet!");
             return;
         }
 
-        // Toon welke submappen zijn gevonden voor controle
         foreach (var sub in mappen.Values) {
             string pad = Path.Combine(basisPad, sub);
             Console.WriteLine(Directory.Exists(pad) ? $"[OK] Map gevonden: {sub}" : $"[!!] Map NIET gevonden: {sub}");
@@ -97,11 +92,16 @@ class PaalMuziek
             int size = Marshal.SizeOf<InputEvent>();
             byte[] buffer = new byte[size];
             while (true) {
-                fs.Read(buffer, 0, buffer.Length);
+                // FIX CA2022: Controleren of de volledige structuur is gelezen
+                int bytesRead = fs.Read(buffer, 0, buffer.Length);
+                if (bytesRead < size) continue; 
+
                 IntPtr ptr = Marshal.AllocHGlobal(size);
                 Marshal.Copy(buffer, 0, ptr, size);
+                // FIX CS8600: Null-check toevoegen of casten
                 InputEvent ev = Marshal.PtrToStructure<InputEvent>(ptr);
                 Marshal.FreeHGlobal(ptr);
+
                 if (ev.Type == 1) { 
                     lock (ingedrukteToetsen) {
                         if (ev.Value == 1 || ev.Value == 2) ingedrukteToetsen.Add(ev.Code);
@@ -114,16 +114,10 @@ class PaalMuziek
 
     static void SpeelEénTrackUitMap(string categoriePad)
     { 
-        if (!Directory.Exists(categoriePad)) {
-            Console.WriteLine($"[FOUT] Pad bestaat niet: {categoriePad}");
-            return;
-        }
+        if (!Directory.Exists(categoriePad)) return;
 
         var fragmenten = Directory.GetFiles(categoriePad, "*.mp3");
-        if (fragmenten.Length == 0) {
-            Console.WriteLine($"[FOUT] Geen MP3's in map: {categoriePad}");
-            return;
-        }
+        if (fragmenten.Length == 0) return;
 
         string track = fragmenten[rng.Next(fragmenten.Length)];
         StopAlleMuziek();
@@ -132,12 +126,13 @@ class PaalMuziek
         
         try {
             var psi = new ProcessStartInfo {
-                FileName = "ffplay",
-                Arguments = $"-nodisp -autoexit -loglevel quiet \"{track}\"", 
+                // GEWIJZIGD NAAR MPV VOOR STABIELE USB AUDIO
+                FileName = "mpv",
+                Arguments = $"--no-video --ao=alsa \"{track}\"", 
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
-            Process p = Process.Start(psi);
+            Process? p = Process.Start(psi);
             if (p != null) { lock(actieveSpelers) { actieveSpelers.Add(p); } }
         } catch (Exception ex) { Console.WriteLine($"Audio Fout: {ex.Message}"); }
     }
@@ -152,5 +147,7 @@ class PaalMuziek
             }
             actieveSpelers.Clear();
         }
-    }
+        // KILLALL MPV VOOR DE ZEKERHEID
+        try { Process.Start("killall", "mpv"); } catch { }
+    } 
 }
