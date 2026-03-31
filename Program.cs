@@ -94,7 +94,7 @@ class PaalMuziek
         } catch { return ""; }
     }
 
-   static void SpeelTrack(int toetsCode)
+static void SpeelTrack(int toetsCode)
 {
     string track = GetWillekeurigeTrack(toetsCode);
     if (string.IsNullOrEmpty(track)) return;
@@ -103,14 +103,20 @@ class PaalMuziek
 
     try {
         var p = new Process();
-        p.StartInfo.FileName = "mpg123";
-        // -o alsa: Forceert ALSA en stopt JACK-errors
-        // --buffer 2048: Verhoogt de buffer om 'error 8' te voorkomen
-        // -q: Houdt de console schoon
-        p.StartInfo.Arguments = $"-o alsa -q --buffer 2048 \"{track}\"";
+        // We gebruiken de shell om twee programma's aan elkaar te knopen
+        p.StartInfo.FileName = "/bin/sh";
+        
+        // UITLEG ARGUMENTEN:
+        // mpg123 -s: Stuur de muziek als ruwe data naar de uitgang (stdout)
+        // |: De 'pijp' die de data doorgeeft
+        // aplay: De standaard Linux speler die de data ontvangt
+        // -D plughw:1,0: Stuurt het direct naar je AIR 192 (Card 1)
+        // -f cd: Vertelt aplay dat het CD-kwaliteit is (44100Hz, 16bit, Stereo)
+        p.StartInfo.Arguments = $"-c \"mpg123 -s \\\"{track}\\\" | aplay -D plughw:1,0 -f cd\"";
+        
         p.StartInfo.UseShellExecute = false;
         p.StartInfo.CreateNoWindow = true;
-        
+
         p.Start();
         
         lock (actieveSpelers) { actieveSpelers.Add(p); }
@@ -118,6 +124,6 @@ class PaalMuziek
         lock (actieveSpelers) { actieveSpelers.Remove(p); }
         p.Dispose();
     } 
-    catch (Exception ex) { Console.WriteLine($"Audio Start Fout: {ex.Message}"); }
+    catch (Exception ex) { Console.WriteLine($"Audio Fout: {ex.Message}"); }
 }
 }
