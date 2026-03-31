@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 
 class PaalMuziek
 {
-    // TIP: Gebruik /dev/input/by-id/ voor een vaste naam als event2 verandert
     static string devicePath = "/dev/input/event2"; 
     static string basisPad = "/home/admin/Symphony-Of-Skin-/muziek"; 
     static Random rng = new Random();
@@ -23,67 +22,50 @@ class PaalMuziek
     };
 
     static List<Process> actieveSpelers = new();
-    static string huidigeActieveCombo = "";
+    static HashSet<int> actieveToetsenSessie = new(); // Om te voorkomen dat 1 toets 100 keer start
     static HashSet<int> ingedrukteToetsen = new();
-    static int stilteTeller = 0;
 
     [StructLayout(LayoutKind.Sequential)]
     struct InputEvent {
-        public IntPtr TimeSec; 
-        public IntPtr TimeUSec;
-        public ushort Type; 
-        public ushort Code; 
-        public int Value;
+        public IntPtr TimeSec; public IntPtr TimeUSec;
+        public ushort Type; public ushort Code; public int Value;
     }
 
     static async Task Main()
     {
-        Console.WriteLine("--- Muziekpaal: AIR 192 & mpg123 Edit ---");
+        Console.WriteLine("--- Muziekpaal: Multi-Track Mode (Layering) ---");
 
-        // Rechten check
-        if (!File.Exists(devicePath)) {
-            Console.WriteLine($"FOUT: Device {devicePath} niet gevonden!");
+        if (!File.Exists(devicePath) || !Directory.Exists(basisPad)) {
+            Console.WriteLine("FOUT: Check paden of rechten!");
             return;
         }
 
-        if (!Directory.Exists(basisPad)) {
-            Console.WriteLine($"FOUT: Muziekmap niet gevonden op {basisPad}");
-            return;
-        }
-
-        // Start de input thread
         _ = Task.Run(() => LeesRawInput());
 
         while (true)
         {
-            List<int> lijst;
+            List<int> huidigeLijst;
             lock (ingedrukteToetsen) {
-                lijst = ingedrukteToetsen.OrderBy(x => x).ToList();
+                huidigeLijst = ingedrukteToetsen.ToList();
             }
 
-            if (lijst.Count > 0)
+            foreach (int toets in huidigeLijst)
             {
-                string comboId = string.Join(",", lijst);
-                if (comboId != huidigeActieveCombo)
-                {
-                    if (mappen.ContainsKey(lijst[0])) 
-                    {
-                        string pad = Path.Combine(basisPad, mappen[lijst[0]]);
-                        SpeelEénTrackUitMap(pad);
+                // Start alleen als deze toets nog niet in de huidige sessie speelt
+                lock (actieveToetsenSessie) {
+                    if (!actieveToetsenSessie.Contains(toets) && mappen.ContainsKey(toets)) {
+                        actieveToetsenSessie.Add(toets);
+                        _ = Task.Run(() => SpeelTrack(toets));
                     }
-                    huidigeActieveCombo = comboId;
-                    stilteTeller = 0;
                 }
             }
-            else if (huidigeActieveCombo != "") 
-            {
-                stilteTeller++;
-                if (stilteTeller > 3) { 
-                    StopAlleMuziek();
-                    huidigeActieveCombo = "";
-                }
+
+            // Als toetsen worden losgelaten, verwijderen we ze uit de sessie zodat ze opnieuw gestart kunnen worden
+            lock (actieveToetsenSessie) {
+                actieveToetsenSessie.RemoveWhere(t => !huidigeLijst.Contains(t));
             }
-            await Task.Delay(100);
+
+            await Task.Delay(50);
         }
     }
 
@@ -91,73 +73,53 @@ class PaalMuziek
     {
         int size = Marshal.SizeOf<InputEvent>();
         byte[] buffer = new byte[size];
-
         try {
             using FileStream fs = new FileStream(devicePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
             while (true) {
-                int bytesRead = fs.Read(buffer, 0, buffer.Length);
-                if (bytesRead < size) continue; 
-
+                if (fs.Read(buffer, 0, size) < size) continue;
                 GCHandle handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
                 InputEvent ev = Marshal.PtrToStructure<InputEvent>(handle.AddrOfPinnedObject());
                 handle.Free();
 
                 if (ev.Type == 0x01) { // EV_KEY
                     lock (ingedrukteToetsen) {
-                        if (ev.Value == 1 || ev.Value == 2) ingedrukteToetsen.Add(ev.Code);
+                        if (ev.Value == 1) ingedrukteToetsen.Add(ev.Code); // Alleen bij eerste indruk (geen repeat)
                         else if (ev.Value == 0) ingedrukteToetsen.Remove(ev.Code);
                     }
                 }
             }
-        } catch (Exception ex) { 
-            Console.WriteLine($"Input Fout: {ex.Message}"); 
-        }
+        } catch (Exception ex) { Console.WriteLine($"Input Fout: {ex.Message}"); }
     }
 
-   static void SpeelEénTrackUitMap(string categoriePad)
-{ 
-    if (!Directory.Exists(categoriePad)) return;
-
-    var fragmenten = Directory.GetFiles(categoriePad, "*.mp3");
-    if (fragmenten.Length == 0) return;
-
-    string track = fragmenten[rng.Next(fragmenten.Length)];
-    StopAlleMuziek();
-
-    Console.WriteLine($"[PLAY] {Path.GetFileName(track)}");
-    
-    try {
-        var psi = new ProcessStartInfo {
-            FileName = "mpg123",
-            // VERVANG hw:1,0 door wat je bij 'aplay -l' ziet (bijv hw:2,0)
-            // --audiodevice is de meest directe manier voor mpg123
-            Arguments = $"-o alsa --audiodevice hw:1,0 -q \"{track}\"", 
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-        Process? p = Process.Start(psi);
-        if (p != null) { lock(actieveSpelers) { actieveSpelers.Add(p); } }
-    } catch (Exception ex) { 
-        Console.WriteLine($"Audio Fout: {ex.Message}"); 
-    }
-}
-    static void StopAlleMuziek()
+    static void SpeelTrack(int toetsCode)
     {
-        lock(actieveSpelers) {
-            foreach (var p in actieveSpelers) {
-                try { 
-                    if (!p.HasExited) {
-                        p.Kill(); 
-                        p.WaitForExit(200); 
-                    }
-                    p.Dispose(); 
-                } catch { }
+        string categoriePad = Path.Combine(basisPad, mappen[toetsCode]);
+        if (!Directory.Exists(categoriePad)) return;
+
+        var fragmenten = Directory.GetFiles(categoriePad, "*.mp3");
+        if (fragmenten.Length == 0) return;
+
+        string track = fragmenten[rng.Next(fragmenten.Length)];
+        Console.WriteLine($"[LAYER START] {mappen[toetsCode]}: {Path.GetFileName(track)}");
+
+        try {
+            var psi = new ProcessStartInfo {
+                FileName = "mpg123",
+                // hw:1,0 direct aanspreken voor lage latency
+                Arguments = $"-o alsa -a hw:1,0 -q \"{track}\"",
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            Process? p = Process.Start(psi);
+            if (p != null) {
+                lock (actieveSpelers) { actieveSpelers.Add(p); }
+                p.WaitForExit(); // Wacht tot het nummer klaar is
+                lock (actieveSpelers) { actieveSpelers.Remove(p); }
+                p.Dispose();
+                Console.WriteLine($"[LAYER END] Track klaar.");
             }
-            actieveSpelers.Clear();
         }
-        // Extra veiligheid: pkill mpg123
-        try { 
-            Process.Start(new ProcessStartInfo("pkill", "mpg123") { CreateNoWindow = true, UseShellExecute = false }); 
-        } catch { }
-    } 
+        catch (Exception ex) { Console.WriteLine($"Audio Fout: {ex.Message}"); }
+    }
 }
