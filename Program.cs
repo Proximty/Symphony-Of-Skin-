@@ -13,16 +13,12 @@ class PaalMuziek
     static Random rng = new Random();
 
     static Dictionary<int, string> mappen = new() {
-        { 103, "2000s" },
-        { 108, "2010s" },
-        { 105, "Anime" },
-        { 106, "EDM"   },
-        { 57,  "Game"  },
-        { 17,  "Pop"   }
+        { 103, "2000s" }, { 108, "2010s" }, { 105, "Anime" },
+        { 106, "EDM"   }, { 57,  "Game"  }, { 17,  "Pop"   }
     };
 
     static List<Process> actieveSpelers = new();
-    static HashSet<int> actieveToetsenSessie = new(); // Om te voorkomen dat 1 toets 100 keer start
+    static HashSet<int> actieveToetsenSessie = new(); 
     static HashSet<int> ingedrukteToetsen = new();
 
     [StructLayout(LayoutKind.Sequential)]
@@ -36,7 +32,7 @@ class PaalMuziek
         Console.WriteLine("--- Muziekpaal: Multi-Track Mode (Layering) ---");
 
         if (!File.Exists(devicePath) || !Directory.Exists(basisPad)) {
-            Console.WriteLine("FOUT: Check paden of rechten!");
+            Console.WriteLine("FOUT: Check paden (bestaat /muziek/?) of rechten (sudo chmod 666 /dev/input/event2)");
             return;
         }
 
@@ -45,13 +41,10 @@ class PaalMuziek
         while (true)
         {
             List<int> huidigeLijst;
-            lock (ingedrukteToetsen) {
-                huidigeLijst = ingedrukteToetsen.ToList();
-            }
+            lock (ingedrukteToetsen) { huidigeLijst = ingedrukteToetsen.ToList(); }
 
             foreach (int toets in huidigeLijst)
             {
-                // Start alleen als deze toets nog niet in de huidige sessie speelt
                 lock (actieveToetsenSessie) {
                     if (!actieveToetsenSessie.Contains(toets) && mappen.ContainsKey(toets)) {
                         actieveToetsenSessie.Add(toets);
@@ -60,11 +53,9 @@ class PaalMuziek
                 }
             }
 
-            // Als toetsen worden losgelaten, verwijderen we ze uit de sessie zodat ze opnieuw gestart kunnen worden
             lock (actieveToetsenSessie) {
                 actieveToetsenSessie.RemoveWhere(t => !huidigeLijst.Contains(t));
             }
-
             await Task.Delay(50);
         }
     }
@@ -83,7 +74,7 @@ class PaalMuziek
 
                 if (ev.Type == 0x01) { // EV_KEY
                     lock (ingedrukteToetsen) {
-                        if (ev.Value == 1) ingedrukteToetsen.Add(ev.Code); // Alleen bij eerste indruk (geen repeat)
+                        if (ev.Value == 1) ingedrukteToetsen.Add(ev.Code);
                         else if (ev.Value == 0) ingedrukteToetsen.Remove(ev.Code);
                     }
                 }
@@ -91,37 +82,41 @@ class PaalMuziek
         } catch (Exception ex) { Console.WriteLine($"Input Fout: {ex.Message}"); }
     }
 
-static void SpeelTrack(int toetsCode)
-{
-    string categoriePad = Path.Combine(basisPad, mappen[toetsCode]);
-    if (!Directory.Exists(categoriePad)) return;
+    static string GetWillekeurigeTrack(int toetsCode)
+    {
+        try {
+            string mapNaam = mappen[toetsCode];
+            string pad = Path.Combine(basisPad, mapNaam);
+            if (!Directory.Exists(pad)) return "";
+            
+            var bestanden = Directory.GetFiles(pad, "*.mp3");
+            return bestanden.Length > 0 ? bestanden[rng.Next(bestanden.Length)] : "";
+        } catch { return ""; }
+    }
 
-    var fragmenten = Directory.GetFiles(categoriePad, "*.mp3");
-    if (fragmenten.Length == 0) return;
+    static void SpeelTrack(int toetsCode)
+    {
+        string track = GetWillekeurigeTrack(toetsCode);
+        if (string.IsNullOrEmpty(track)) return;
 
-    string track = fragmenten[rng.Next(fragmenten.Length)];
-    Console.WriteLine($"[LAYER START] {mappen[toetsCode]}: {Path.GetFileName(track)}");
+        Console.WriteLine($"[PLAY] {Path.GetFileName(track)}");
 
-    try {
-        var psi = new ProcessStartInfo {
-            FileName = "/bin/sh",
-            // Uitleg: 
-            // mpg123 -s stuurt RAW audio naar de uitgang
-            // aplay pikt dit op en stuurt het naar hw:1,0 (of hw:2,0 afhankelijk van je kaart)
-            Arguments = $"-c \"mpg123 -s \\\"{track}\\\" | aplay -D hw:1,0 -f cd\"",
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-
-        Process? p = Process.Start(psi);
-        if (p != null) {
+        try {
+            // Geen moeilijke arguments meer, alleen de tracknaam.
+            // De --buffer voorkomt de "resync" errors bij drukke momenten.
+            var p = new Process();
+            p.StartInfo.FileName = "mpg123";
+            p.StartInfo.Arguments = $"-q --buffer 1024 \"{track}\"";
+            p.StartInfo.UseShellExecute = false;
+            p.StartInfo.CreateNoWindow = true;
+            
+            p.Start();
+            
             lock (actieveSpelers) { actieveSpelers.Add(p); }
-            p.WaitForExit(); 
+            p.WaitForExit();
             lock (actieveSpelers) { actieveSpelers.Remove(p); }
             p.Dispose();
-            Console.WriteLine($"[LAYER END] Klaar.");
-        }
+        } 
+        catch (Exception ex) { Console.WriteLine($"Audio Start Fout: {ex.Message}"); }
     }
-    catch (Exception ex) { Console.WriteLine($"Audio Fout: {ex.Message}"); }
-}
 }
