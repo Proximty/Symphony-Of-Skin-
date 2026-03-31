@@ -114,18 +114,12 @@ class PaalMuziek
         }
     }
 
-    static void SpeelEénTrackUitMap(string categoriePad)
+   static void SpeelEénTrackUitMap(string categoriePad)
 { 
-    if (!Directory.Exists(categoriePad)) {
-        Console.WriteLine($"[!] Map niet gevonden: {categoriePad}");
-        return;
-    }
+    if (!Directory.Exists(categoriePad)) return;
 
     var fragmenten = Directory.GetFiles(categoriePad, "*.mp3");
-    if (fragmenten.Length == 0) {
-        Console.WriteLine($"[!] Geen MP3's in: {categoriePad}");
-        return;
-    }
+    if (fragmenten.Length == 0) return;
 
     string track = fragmenten[rng.Next(fragmenten.Length)];
     StopAlleMuziek();
@@ -135,20 +129,18 @@ class PaalMuziek
     try {
         var psi = new ProcessStartInfo {
             FileName = "mpg123",
-            // -o alsa: Forceert ALSA (geen JACK errors meer)
-            // -a default: Gebruikt de standaard geluidskaart (of gebruik hw:1,0)
-            // --buffer 1024: Voegt een kleine buffer toe voor stabiliteit
-            Arguments = $"-o alsa -a default -q --buffer 1024 \"{track}\"",
+            // VERVANG hw:1,0 door wat je bij 'aplay -l' ziet (bijv hw:2,0)
+            // --audiodevice is de meest directe manier voor mpg123
+            Arguments = $"-o alsa --audiodevice hw:1,0 -q \"{track}\"", 
             UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardError = false // Zet op true als je meer debug info wilt
+            CreateNoWindow = true
         };
         Process? p = Process.Start(psi);
         if (p != null) { lock(actieveSpelers) { actieveSpelers.Add(p); } }
     } catch (Exception ex) { 
         Console.WriteLine($"Audio Fout: {ex.Message}"); 
     }
-}  
+}
     static void StopAlleMuziek()
     {
         lock(actieveSpelers) {
