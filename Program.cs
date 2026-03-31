@@ -109,33 +109,32 @@ class PaalMuziek
     }
 
     static void SpeelEénTrackUitMap(string categoriePad)
-    {
-        if (!Directory.Exists(categoriePad)) return;
-        var fragmenten = Directory.GetFiles(categoriePad, "*.mp3");
-        if (fragmenten.Length == 0) return;
+{
+    if (!Directory.Exists(categoriePad)) return;
+    var fragmenten = Directory.GetFiles(categoriePad, "*.mp3");
+    if (fragmenten.Length == 0) return;
 
-        string track = fragmenten[rng.Next(fragmenten.Length)];
-        StopAlleMuziek();
+    string track = fragmenten[rng.Next(fragmenten.Length)];
+    StopAlleMuziek();
 
-        Console.WriteLine($"[PLAY] {Path.GetFileName(track)}");
-        
-        try {
-            var psi = new ProcessStartInfo {
-                FileName = "ffplay",
-                // -nodisp: geen venster openen
-                // -autoexit: sluit proces als klaar
-                // -loglevel quiet: geen tekst-spam in je terminal
-                Arguments = $"-nodisp -autoexit -loglevel quiet \"{track}\"", 
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-            var p = Process.Start(psi);
-            if (p != null) actieveSpelers.Add(p);
-        } catch (Exception ex) { 
-            Console.WriteLine($"Fout bij starten audio: {ex.Message}. Is ffmpeg geinstalleerd?"); 
-        }
+    // We loggen nu specifiek dat we kaart 2 gebruiken
+    Console.WriteLine($"[PLAY] Direct naar AIR 192 (hw:2,0): {Path.GetFileName(track)}");
+    
+    try {
+        var psi = new ProcessStartInfo {
+            FileName = "mpg123",
+            // -a hw:2,0 vertelt mpg123 om card 2, device 0 te gebruiken
+            // -q zorgt dat je geen tekst-spam krijgt
+            Arguments = $"-a hw:2,0 -q \"{track}\"", 
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        var p = Process.Start(psi);
+        if (p != null) actieveSpelers.Add(p);
+    } catch (Exception ex) { 
+        Console.WriteLine($"Fout bij afspelen: {ex.Message}"); 
     }
-
+}
     static void StopAlleMuziek()
     {
         if (actieveSpelers.Count == 0) return;
