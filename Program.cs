@@ -111,32 +111,31 @@ class PaalMuziek
             }
         } catch (Exception ex) { Console.WriteLine($"Input Fout: {ex.Message}"); }
     }
+static void SpeelEénTrackUitMap(string categoriePad)
+{ 
+    if (!Directory.Exists(categoriePad)) return;
 
-    static void SpeelEénTrackUitMap(string categoriePad)
-    { 
-        if (!Directory.Exists(categoriePad)) return;
+    var fragmenten = Directory.GetFiles(categoriePad, "*.mp3");
+    if (fragmenten.Length == 0) return;
 
-        var fragmenten = Directory.GetFiles(categoriePad, "*.mp3");
-        if (fragmenten.Length == 0) return;
+    string track = fragmenten[rng.Next(fragmenten.Length)];
+    StopAlleMuziek();
 
-        string track = fragmenten[rng.Next(fragmenten.Length)];
-        StopAlleMuziek();
-
-        Console.WriteLine($"[PLAY] {Path.GetFileName(track)}");
-        
-        try {
-            var psi = new ProcessStartInfo {
-                // GEWIJZIGD NAAR MPV VOOR STABIELE USB AUDIO
-                FileName = "mpv",
-                Arguments = $"--no-video --ao=alsa \"{track}\"", 
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-            Process? p = Process.Start(psi);
-            if (p != null) { lock(actieveSpelers) { actieveSpelers.Add(p); } }
-        } catch (Exception ex) { Console.WriteLine($"Audio Fout: {ex.Message}"); }
-    }
-
+    Console.WriteLine($"[PLAY] {Path.GetFileName(track)}");
+    
+    try {
+        var psi = new ProcessStartInfo {
+            FileName = "mpv",
+            // WE LATEN --ao=alsa WEG. 
+            // PulseAudio (de mixer van de Pi Desktop) regelt nu het verkeer.
+            Arguments = $"--no-video --ao=pulse \"{track}\"", 
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        Process? p = Process.Start(psi);
+        if (p != null) { lock(actieveSpelers) { actieveSpelers.Add(p); } }
+    } catch (Exception ex) { Console.WriteLine($"Audio Fout: {ex.Message}"); }
+}
     static void StopAlleMuziek()
     {
         lock(actieveSpelers) {
