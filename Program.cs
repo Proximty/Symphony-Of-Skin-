@@ -8,7 +8,8 @@ using System.Threading.Tasks;
 class PaalMuziek
 {
     // Gebruik Path.Combine voor Linux/Windows compatibiliteit
-    static string basisPad = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "muziek");
+    // Vervang de oude regel bovenin je code door deze:
+static string basisPad = Path.Combine(Directory.GetCurrentDirectory(), "muziek");
 
     static Dictionary<ConsoleKey, string> mappen = new() {
         { ConsoleKey.UpArrow,    "2000s" },
