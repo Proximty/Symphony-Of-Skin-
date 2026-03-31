@@ -8,12 +8,12 @@ using System.Threading.Tasks;
 
 class PaalMuziek
 {
-    // PAD NAAR DE MAKEY MAKEY (gebaseerd op jouw output)
+    // PAD NAAR DE MAKEY MAKEY (event6 is je Arduino Leonardo Keyboard)
     static string devicePath = "/dev/input/event6"; 
     static string basisPad = Path.Combine(Directory.GetCurrentDirectory(), "muziek");
     static Random rng = new Random();
 
-    // RUWE LINUX CODES (Makey Makey / Keyboard event codes)
+    // RUWE LINUX CODES
     static Dictionary<int, string> mappen = new() {
         { 103, "2000s" }, // Up Arrow
         { 108, "2010s" }, // Down Arrow
@@ -28,7 +28,6 @@ class PaalMuziek
     static HashSet<int> ingedrukteToetsen = new();
     static int stilteTeller = 0;
 
-    // Struct voor Linux Input Events
     [StructLayout(LayoutKind.Sequential)]
     struct InputEvent {
         public long TimeSec;
@@ -40,14 +39,14 @@ class PaalMuziek
 
     static async Task Main()
     {
-        Console.WriteLine("--- Muziekpaal: Direct Device Mode (event6) ---");
+        Console.WriteLine("--- Muziekpaal: FFmpeg Mode (event6) ---");
         
         if (!File.Exists(devicePath)) {
-            Console.WriteLine($"FOUT: {devicePath} niet gevonden! Probeer: sudo dotnet run");
+            Console.WriteLine($"FOUT: {devicePath} niet gevonden! Gebruik: sudo dotnet run");
             return;
         }
 
-        // Start het lezen van de Makey Makey in de achtergrond
+        // Start input reader in de achtergrond
         _ = Task.Run(() => LeesRawInput());
 
         while (true)
@@ -62,7 +61,6 @@ class PaalMuziek
                 string comboId = string.Join(",", lijst);
                 if (comboId != huidigeActieveCombo)
                 {
-                    // Alleen de eerste toets uit de lijst pakken voor de map (of pas combo-logica aan)
                     if (mappen.ContainsKey(lijst[0])) 
                     {
                         SpeelEénTrackUitMap(Path.Combine(basisPad, mappen[lijst[0]]));
@@ -74,7 +72,7 @@ class PaalMuziek
             else if (huidigeActieveCombo != "")
             {
                 stilteTeller++;
-                if (stilteTeller > 3) {
+                if (stilteTeller > 3) { // Ongeveer 300ms buffer
                     StopAlleMuziek();
                     huidigeActieveCombo = "";
                 }
@@ -120,16 +118,22 @@ class PaalMuziek
         StopAlleMuziek();
 
         Console.WriteLine($"[PLAY] {Path.GetFileName(track)}");
+        
         try {
             var psi = new ProcessStartInfo {
-                FileName = "mpg123",
-                Arguments = $"-o alsa -q \"{track}\"", // Forceer audio naar box
+                FileName = "ffplay",
+                // -nodisp: geen venster openen
+                // -autoexit: sluit proces als klaar
+                // -loglevel quiet: geen tekst-spam in je terminal
+                Arguments = $"-nodisp -autoexit -loglevel quiet \"{track}\"", 
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
             var p = Process.Start(psi);
             if (p != null) actieveSpelers.Add(p);
-        } catch (Exception ex) { Console.WriteLine($"Fout: {ex.Message}"); }
+        } catch (Exception ex) { 
+            Console.WriteLine($"Fout bij starten audio: {ex.Message}. Is ffmpeg geinstalleerd?"); 
+        }
     }
 
     static void StopAlleMuziek()
@@ -137,8 +141,14 @@ class PaalMuziek
         if (actieveSpelers.Count == 0) return;
         Console.WriteLine("[STOP]");
         foreach (var p in actieveSpelers) {
-            try { if (!p.HasExited) p.Kill(); p.Dispose(); } catch { }
+            try { 
+                if (!p.HasExited) p.Kill(); 
+                p.Dispose(); 
+            } catch { }
         }
         actieveSpelers.Clear();
+        
+        // Extra cleanup voor hangende ffplay processen
+        try { Process.Start("killall", "ffplay"); } catch { }
     }
 }
