@@ -8,8 +8,7 @@ using System.Threading.Tasks;
 class PaalMuziek
 {
     // Gebruik Path.Combine voor Linux/Windows compatibiliteit
-    // Vervang de oude regel bovenin je code door deze:
-static string basisPad = Path.Combine(Directory.GetCurrentDirectory(), "muziek");
+    static string basisPad = Path.Combine(Directory.GetCurrentDirectory(), "muziek");
 
     static Dictionary<ConsoleKey, string> mappen = new() {
         { ConsoleKey.UpArrow,    "2000s" },
@@ -35,7 +34,6 @@ static string basisPad = Path.Combine(Directory.GetCurrentDirectory(), "muziek")
         Console.WriteLine("--- Interactieve Muziekpaal Gestart (Linux Mode) ---");
         Console.WriteLine($"Basispad: {basisPad}");
 
-        // Controleer of de map bestaat
         if (!Directory.Exists(basisPad))
         {
             Console.WriteLine("WAARSCHUWING: De muziekmap is niet gevonden!");
@@ -44,10 +42,8 @@ static string basisPad = Path.Combine(Directory.GetCurrentDirectory(), "muziek")
 
         while (true)
         {
-            // 1. Verzamel input
             while (Console.KeyAvailable) 
             {
-                // true zorgt ervoor dat de letter niet in de console verschijnt
                 var key = Console.ReadKey(true).Key;
                 if (mappen.ContainsKey(key)) 
                 {
@@ -58,7 +54,6 @@ static string basisPad = Path.Combine(Directory.GetCurrentDirectory(), "muziek")
             var lijst = ingedrukteToetsen.OrderBy(x => x).ToList();
             string comboId = string.Join(",", lijst);
 
-            // 2. Logica voor afspelen
             if (lijst.Count > 0)
             {
                 if (comboId != huidigeActieveCombo)
@@ -73,7 +68,8 @@ static string basisPad = Path.Combine(Directory.GetCurrentDirectory(), "muziek")
                     if (categorieMap != null) 
                     {
                         string volledigPad = Path.Combine(basisPad, categorieMap);
-                        SpeelLiedjeMetLagen(volledigPad);
+                        // AANGEPAST: We spelen nu direct vanuit de categorieMap
+                        SpeelLiedjesUitMap(volledigPad);
                     }
                     huidigeActieveCombo = comboId;
                 }
@@ -84,34 +80,35 @@ static string basisPad = Path.Combine(Directory.GetCurrentDirectory(), "muziek")
                 huidigeActieveCombo = "";
             }
 
-            // 3. De Makey Makey herhaalt toetsaanslagen. 
-            // We wachten even en legen de lijst om te kijken of de toets nog steeds 'vast' zit.
             await Task.Delay(150); 
             ingedrukteToetsen.Clear();
         }
     }
 
-    static void SpeelLiedjeMetLagen(string categoriePad)
+    static void SpeelLiedjesUitMap(string categoriePad)
     {
-        if (!Directory.Exists(categoriePad)) return;
+        if (!Directory.Exists(categoriePad))
+        {
+            Console.WriteLine($"Map niet gevonden: {categoriePad}");
+            return;
+        }
 
-        var liedjeMappen = Directory.GetDirectories(categoriePad);
-        if (liedjeMappen.Length == 0) return;
+        // Pak alle mp3 bestanden direct uit de map (zoals te zien in je screenshot)
+        var fragmenten = Directory.GetFiles(categoriePad, "*.mp3");
 
-        string gekozenLiedjeMap = liedjeMappen[new Random().Next(liedjeMappen.Length)];
-        
+        if (fragmenten.Length == 0)
+        {
+            Console.WriteLine($"Geen MP3's gevonden in: {categoriePad}");
+            return;
+        }
+
         StopAlleMuziek();
 
-        // Pak alle mp3 bestanden
-        var fragmenten = Directory.GetFiles(gekozenLiedjeMap, "*.mp3");
-
-        Console.WriteLine($"[START] {Path.GetFileName(gekozenLiedjeMap)}");
+        Console.WriteLine($"[START] Afspelen van {fragmenten.Length} tracks uit {Path.GetFileName(categoriePad)}");
 
         foreach (var track in fragmenten)
         {
             try {
-                // Op Raspberry Pi is 'mpg123' goed, maar 'ffplay' is vaak beter voor sync.
-                // We gebruiken bash om het proces aan te roepen voor betere stabiliteit.
                 var psi = new ProcessStartInfo
                 {
                     FileName = "mpg123",
@@ -124,7 +121,7 @@ static string basisPad = Path.Combine(Directory.GetCurrentDirectory(), "muziek")
                 var p = Process.Start(psi);
                 if (p != null) actieveSpelers.Add(p);
             } catch (Exception ex) {
-                Console.WriteLine($"Fout: {ex.Message}");
+                Console.WriteLine($"Fout bij starten {Path.GetFileName(track)}: {ex.Message}");
             }
         }
     }
@@ -133,20 +130,19 @@ static string basisPad = Path.Combine(Directory.GetCurrentDirectory(), "muziek")
     {
         if (actieveSpelers.Count == 0) return;
 
-        Console.WriteLine("[STOP] Alle lagen");
+        Console.WriteLine("[STOP] Alle muziek");
         foreach (var p in actieveSpelers)
         {
             try { 
                 if (!p.HasExited)
                 {
-                    p.Kill(true); // true zorgt dat ook child-processes doodgaan
+                    p.Kill(true);
                 }
                 p.Dispose();
             } catch { }
         }
         actieveSpelers.Clear();
         
-        // Extra veiligheid voor Linux: stop alle hangende mpg123 processen
         try { Process.Start("killall", "mpg123"); } catch { }
     }
 }
