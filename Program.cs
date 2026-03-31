@@ -117,16 +117,19 @@ static void SpeelEénTrackUitMap(string categoriePad)
     string track = fragmenten[rng.Next(fragmenten.Length)];
     StopAlleMuziek();
 
-    Console.WriteLine($"[PLAY] AIR 192: {Path.GetFileName(track)}");
+    Console.WriteLine($"[PLAY] Starten op AIR 192: {Path.GetFileName(track)}");
     
     try {
         var psi = new ProcessStartInfo {
             FileName = "ffplay",
-            // We gebruiken de instellingen die net in je terminal werkten
-            // -f alsa "hw:2,0" dwingt de output naar de AIR kaart
-            Arguments = $"-nodisp -autoexit -loglevel quiet -f alsa \"hw:2,0\" -af \"aresample=48000,pan=stereo|c0=c0|c1=c1\" \"{track}\"", 
+            // We gebruiken GEEN hw:2,0 meer omdat de kaart nu de 'default' is door Stap 1
+            // -nodisp: geen scherm
+            // -autoexit: sluit na liedje
+            // -af: zorgt dat elk MP3 formaat wordt omgezet naar wat de kaart aankan
+            Arguments = $"-nodisp -autoexit -loglevel error -af \"aresample=async=1:min_hard_comp=0.010000:first_pts=0\" \"{track}\"", 
             UseShellExecute = false,
-            CreateNoWindow = true
+            CreateNoWindow = true,
+            RedirectStandardError = true // Zorgt dat we errors zien als hij crasht
         };
         var p = Process.Start(psi);
         if (p != null) actieveSpelers.Add(p);
