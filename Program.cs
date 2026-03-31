@@ -108,7 +108,7 @@ class PaalMuziek
         }
     }
 
-    static void SpeelEénTrackUitMap(string categoriePad)
+ static void SpeelEénTrackUitMap(string categoriePad)
 {
     if (!Directory.Exists(categoriePad)) return;
     var fragmenten = Directory.GetFiles(categoriePad, "*.mp3");
@@ -117,22 +117,24 @@ class PaalMuziek
     string track = fragmenten[rng.Next(fragmenten.Length)];
     StopAlleMuziek();
 
-    // We loggen nu specifiek dat we kaart 2 gebruiken
-    Console.WriteLine($"[PLAY] Direct naar AIR 192 (hw:2,0): {Path.GetFileName(track)}");
+    Console.WriteLine($"[PLAY] AIR 192 via FFplay: {Path.GetFileName(track)}");
     
     try {
         var psi = new ProcessStartInfo {
-            FileName = "mpg123",
-            // -a hw:2,0 vertelt mpg123 om card 2, device 0 te gebruiken
-            // -q zorgt dat je geen tekst-spam krijgt
-            Arguments = $"-a hw:2,0 -q \"{track}\"", 
+            FileName = "ffplay",
+            // ARGUMENTEN UITGELEGD:
+            // -nodisp: Geen videoscherm
+            // -autoexit: Sluit proces na afloop
+            // -f alsa: Gebruik de ALSA audio driver
+            // "hw:2,0": Jouw specifieke AIR 192 kaart
+            Arguments = $"-nodisp -autoexit -loglevel quiet -f alsa \"hw:2,0\" \"{track}\"", 
             UseShellExecute = false,
             CreateNoWindow = true
         };
         var p = Process.Start(psi);
         if (p != null) actieveSpelers.Add(p);
     } catch (Exception ex) { 
-        Console.WriteLine($"Fout bij afspelen: {ex.Message}"); 
+        Console.WriteLine($"Fout: {ex.Message}"); 
     }
 }
     static void StopAlleMuziek()
