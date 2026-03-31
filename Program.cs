@@ -8,12 +8,11 @@ using System.Threading.Tasks;
 
 class PaalMuziek
 {
-    // PAD NAAR DE MAKEY MAKEY (event6 is je Arduino Leonardo Keyboard)
-    static string devicePath = "/dev/input/event6"; 
+    // AANGEPAST: event2 is jouw Arduino/Makey Makey
+    static string devicePath = "/dev/input/event2"; 
     static string basisPad = Path.Combine(Directory.GetCurrentDirectory(), "muziek");
     static Random rng = new Random();
 
-    // RUWE LINUX CODES
     static Dictionary<int, string> mappen = new() {
         { 103, "2000s" }, // Up Arrow
         { 108, "2010s" }, // Down Arrow
@@ -39,14 +38,15 @@ class PaalMuziek
 
     static async Task Main()
     {
-        Console.WriteLine("--- Muziekpaal: FFmpeg Mode (event6) ---");
+        Console.WriteLine("--- Muziekpaal: AIR 192 & Makey Makey Mode ---");
         
+        // Check of we bij de Makey Makey kunnen
         if (!File.Exists(devicePath)) {
-            Console.WriteLine($"FOUT: {devicePath} niet gevonden! Gebruik: sudo dotnet run");
+            Console.WriteLine($"FOUT: {devicePath} niet gevonden!");
+            Console.WriteLine("Voer dit eerst uit: sudo chmod 666 /dev/input/event2");
             return;
         }
 
-        // Start input reader in de achtergrond
         _ = Task.Run(() => LeesRawInput());
 
         while (true)
@@ -63,7 +63,8 @@ class PaalMuziek
                 {
                     if (mappen.ContainsKey(lijst[0])) 
                     {
-                        SpeelEénTrackUitMap(Path.Combine(basisPad, mappen[lijst[0]]));
+                        string pad = Path.Combine(basisPad, mappen[lijst[0]]);
+                        SpeelEénTrackUitMap(pad);
                     }
                     huidigeActieveCombo = comboId;
                     stilteTeller = 0;
@@ -72,12 +73,11 @@ class PaalMuziek
             else if (huidigeActieveCombo != "")
             {
                 stilteTeller++;
-                if (stilteTeller > 3) { // Ongeveer 300ms buffer
+                if (stilteTeller > 3) { 
                     StopAlleMuziek();
                     huidigeActieveCombo = "";
                 }
             }
-
             await Task.Delay(100);
         }
     }
@@ -108,45 +108,53 @@ class PaalMuziek
         }
     }
 
-static void SpeelEénTrackUitMap(string categoriePad)
-{
-    if (!Directory.Exists(categoriePad)) return;
-    var fragmenten = Directory.GetFiles(categoriePad, "*.mp3");
-    if (fragmenten.Length == 0) return;
-
-    string track = fragmenten[rng.Next(fragmenten.Length)];
-    StopAlleMuziek();
-
-    Console.WriteLine($"[PLAY] {Path.GetFileName(track)}");
-    
-    try {
-        var psi = new ProcessStartInfo {
-            FileName = "ffplay",
-            // We gebruiken GEEN -f alsa en GEEN hw:0,0. 
-            // We laten de systeem-mixer het werk doen.
-            Arguments = $"-nodisp -autoexit -loglevel error \"{track}\"", 
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-        // BELANGRIJK: Run dit NIET als sudo als je op de desktop zit!
-        var p = Process.Start(psi);
-        if (p != null) actieveSpelers.Add(p);
-    } catch (Exception ex) { 
-        Console.WriteLine($"Fout: {ex.Message}"); 
-    }
-}    static void StopAlleMuziek()
-    {
-        if (actieveSpelers.Count == 0) return;
-        Console.WriteLine("[STOP]");
-        foreach (var p in actieveSpelers) {
-            try { 
-                if (!p.HasExited) p.Kill(); 
-                p.Dispose(); 
-            } catch { }
+    static void SpeelEénTrackUitMap(string categoriePad)
+    { 
+        if (!Directory.Exists(categoriePad)) {
+            Console.WriteLine($"Map niet gevonden: {categoriePad}");
+            return;
         }
-        actieveSpelers.Clear();
+
+        var fragmenten = Directory.GetFiles(categoriePad, "*.mp3");
+        if (fragmenten.Length == 0) return;
+
+        string track = fragmenten[rng.Next(fragmenten.Length)];
+        StopAlleMuziek();
+
+        Console.WriteLine($"[PLAY] {Path.GetFileName(track)}");
         
-        // Extra cleanup voor hangende ffplay processen
-        try { Process.Start("killall", "ffplay"); } catch { }
+        try {
+            var psi = new ProcessStartInfo {
+                FileName = "ffplay",
+                // De meest stabiele manier voor de AIR 192 (geen sudo nodig!)
+                Arguments = $"-nodisp -autoexit -loglevel quiet \"{track}\"", 
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            
+            Process p = Process.Start(psi);
+            if (p != null) {
+                lock(actieveSpelers) {
+                    actieveSpelers.Add(p);
+                }
+            }
+        } catch (Exception ex) { 
+            Console.WriteLine($"Audio Fout: {ex.Message}"); 
+        }
+    }
+
+    static void StopAlleMuziek()
+    {
+        lock(actieveSpelers) {
+            if (actieveSpelers.Count == 0) return;
+            Console.WriteLine("[STOP]");
+            foreach (var p in actieveSpelers) {
+                try { 
+                    if (!p.HasExited) p.Kill(); 
+                    p.Dispose(); 
+                } catch { }
+            }
+            actieveSpelers.Clear();
+        }
     }
 }
