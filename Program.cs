@@ -94,29 +94,30 @@ class PaalMuziek
         } catch { return ""; }
     }
 
-    static void SpeelTrack(int toetsCode)
-    {
-        string track = GetWillekeurigeTrack(toetsCode);
-        if (string.IsNullOrEmpty(track)) return;
+   static void SpeelTrack(int toetsCode)
+{
+    string track = GetWillekeurigeTrack(toetsCode);
+    if (string.IsNullOrEmpty(track)) return;
 
-        Console.WriteLine($"[PLAY] {Path.GetFileName(track)}");
+    Console.WriteLine($"[PLAY] {Path.GetFileName(track)}");
 
-        try {
-            // Geen moeilijke arguments meer, alleen de tracknaam.
-            // De --buffer voorkomt de "resync" errors bij drukke momenten.
-            var p = new Process();
-            p.StartInfo.FileName = "mpg123";
-            p.StartInfo.Arguments = $"-q --buffer 1024 \"{track}\"";
-            p.StartInfo.UseShellExecute = false;
-            p.StartInfo.CreateNoWindow = true;
-            
-            p.Start();
-            
-            lock (actieveSpelers) { actieveSpelers.Add(p); }
-            p.WaitForExit();
-            lock (actieveSpelers) { actieveSpelers.Remove(p); }
-            p.Dispose();
-        } 
-        catch (Exception ex) { Console.WriteLine($"Audio Start Fout: {ex.Message}"); }
-    }
+    try {
+        var p = new Process();
+        p.StartInfo.FileName = "mpg123";
+        // -o alsa: Forceert ALSA en stopt JACK-errors
+        // --buffer 2048: Verhoogt de buffer om 'error 8' te voorkomen
+        // -q: Houdt de console schoon
+        p.StartInfo.Arguments = $"-o alsa -q --buffer 2048 \"{track}\"";
+        p.StartInfo.UseShellExecute = false;
+        p.StartInfo.CreateNoWindow = true;
+        
+        p.Start();
+        
+        lock (actieveSpelers) { actieveSpelers.Add(p); }
+        p.WaitForExit();
+        lock (actieveSpelers) { actieveSpelers.Remove(p); }
+        p.Dispose();
+    } 
+    catch (Exception ex) { Console.WriteLine($"Audio Start Fout: {ex.Message}"); }
+}
 }
