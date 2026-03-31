@@ -117,27 +117,24 @@ static void SpeelEénTrackUitMap(string categoriePad)
     string track = fragmenten[rng.Next(fragmenten.Length)];
     StopAlleMuziek();
 
-    Console.WriteLine($"[PLAY] Starten op AIR 192: {Path.GetFileName(track)}");
+    Console.WriteLine($"[PLAY] {Path.GetFileName(track)}");
     
     try {
         var psi = new ProcessStartInfo {
             FileName = "ffplay",
-            // We gebruiken GEEN hw:2,0 meer omdat de kaart nu de 'default' is door Stap 1
-            // -nodisp: geen scherm
-            // -autoexit: sluit na liedje
-            // -af: zorgt dat elk MP3 formaat wordt omgezet naar wat de kaart aankan
-            Arguments = $"-nodisp -autoexit -loglevel error -af \"aresample=async=1:min_hard_comp=0.010000:first_pts=0\" \"{track}\"", 
+            // We gebruiken GEEN -f alsa en GEEN hw:0,0. 
+            // We laten de systeem-mixer het werk doen.
+            Arguments = $"-nodisp -autoexit -loglevel error \"{track}\"", 
             UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardError = true // Zorgt dat we errors zien als hij crasht
+            CreateNoWindow = true
         };
+        // BELANGRIJK: Run dit NIET als sudo als je op de desktop zit!
         var p = Process.Start(psi);
         if (p != null) actieveSpelers.Add(p);
     } catch (Exception ex) { 
         Console.WriteLine($"Fout: {ex.Message}"); 
     }
-}
-    static void StopAlleMuziek()
+}    static void StopAlleMuziek()
     {
         if (actieveSpelers.Count == 0) return;
         Console.WriteLine("[STOP]");
