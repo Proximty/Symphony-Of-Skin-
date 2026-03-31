@@ -103,25 +103,21 @@ static void SpeelTrack(int toetsCode)
 
     try {
         var p = new Process();
-        p.StartInfo.FileName = "/bin/sh";
+        p.StartInfo.FileName = "mpg123";
         
-        
-    p.StartInfo.Arguments = $"-c \"mpg123 -s \\\"{track}\\\" | aplay -D plug:dmix:0 -c 2 -f cd\"";
+        // -a hw:0,0  -> Stuur direct naar de AIR 192 (Card 0)
+        // --buffer 1024 -> Voorkomt haperingen
+        // --resync-limit -1 -> Probeert corrupte MP3's toch te lezen
+        p.StartInfo.Arguments = $"-a hw:0,0 --buffer 1024 --resync-limit -1 \"{track}\"";
         
         p.StartInfo.UseShellExecute = false;
         p.StartInfo.CreateNoWindow = true;
-
         p.Start();
-        
+
         lock (actieveSpelers) { actieveSpelers.Add(p); }
-        
-        // We draaien dit in een Task.Run (via de aanroep in Main), 
-        // dus WaitForExit blokkeert de andere toetsen niet.
         p.WaitForExit();
-        
         lock (actieveSpelers) { actieveSpelers.Remove(p); }
-        p.Dispose();
     } 
-    catch (Exception ex) { Console.WriteLine($"Audio Fout: {ex.Message}"); }
+    catch (Exception ex) { Console.WriteLine($"Fout: {ex.Message}"); }
 }
 }
