@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 class PaalMuziek
 {
     static string devicePath = "/dev/input/event2"; 
-static string basisPad = "/home/admin/Symphony-Of-Skin-/muziek"; // Gebruik hier het resultaat van stap 1
+    static string basisPad = "/home/admin/Symphony-Of-Skin-/muziek"; 
     static Random rng = new Random();
 
     static Dictionary<int, string> mappen = new() {
@@ -34,7 +34,7 @@ static string basisPad = "/home/admin/Symphony-Of-Skin-/muziek"; // Gebruik hier
 
     static async Task Main()
     {
-        Console.WriteLine("--- Muziekpaal: AIR 192 & MPV Fix ---");
+        Console.WriteLine("--- Muziekpaal: AIR 192 & SDL Driver Fix ---");
 
         if (!Directory.Exists(basisPad)) {
             Console.WriteLine($"FOUT: De hoofdmap {basisPad} bestaat niet!");
@@ -73,7 +73,7 @@ static string basisPad = "/home/admin/Symphony-Of-Skin-/muziek"; // Gebruik hier
                     stilteTeller = 0;
                 }
             }
-            else if (huidigeActieveCombo != "")
+            else if (huidigeActieveCombo != "") // FIX: Hier stond een typfout
             {
                 stilteTeller++;
                 if (stilteTeller > 3) { 
@@ -92,13 +92,11 @@ static string basisPad = "/home/admin/Symphony-Of-Skin-/muziek"; // Gebruik hier
             int size = Marshal.SizeOf<InputEvent>();
             byte[] buffer = new byte[size];
             while (true) {
-                // FIX CA2022: Controleren of de volledige structuur is gelezen
                 int bytesRead = fs.Read(buffer, 0, buffer.Length);
                 if (bytesRead < size) continue; 
 
                 IntPtr ptr = Marshal.AllocHGlobal(size);
                 Marshal.Copy(buffer, 0, ptr, size);
-                // FIX CS8600: Null-check toevoegen of casten
                 InputEvent ev = Marshal.PtrToStructure<InputEvent>(ptr);
                 Marshal.FreeHGlobal(ptr);
 
@@ -111,42 +109,40 @@ static string basisPad = "/home/admin/Symphony-Of-Skin-/muziek"; // Gebruik hier
             }
         } catch (Exception ex) { Console.WriteLine($"Input Fout: {ex.Message}"); }
     }
-static void SpeelEénTrackUitMap(string categoriePad)
-{ 
-    if (!Directory.Exists(categoriePad)) return;
 
-    var fragmenten = Directory.GetFiles(categoriePad, "*.mp3");
-    if (fragmenten.Length == 0) return;
+    static void SpeelEénTrackUitMap(string categoriePad)
+    { 
+        if (!Directory.Exists(categoriePad)) return;
 
-    string track = fragmenten[rng.Next(fragmenten.Length)];
-    StopAlleMuziek();
+        var fragmenten = Directory.GetFiles(categoriePad, "*.mp3");
+        if (fragmenten.Length == 0) return;
 
-    Console.WriteLine($"[PLAY] {Path.GetFileName(track)}");
-    
-    try {
-        var psi = new ProcessStartInfo {
-            FileName = "mpv",
-            // WE LATEN --ao=alsa WEG. 
-            // PulseAudio (de mixer van de Pi Desktop) regelt nu het verkeer.
-            Arguments = $"--no-video --ao=pulse \"{track}\"", 
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-        Process? p = Process.Start(psi);
-        if (p != null) { lock(actieveSpelers) { actieveSpelers.Add(p); } }
-    } catch (Exception ex) { Console.WriteLine($"Audio Fout: {ex.Message}"); }
-}
+        string track = fragmenten[rng.Next(fragmenten.Length)];
+        StopAlleMuziek();
+
+        Console.WriteLine($"[PLAY] {Path.GetFileName(track)}");
+        
+        try {
+            var psi = new ProcessStartInfo {
+                FileName = "mpv",
+                // We gebruiken SDL omdat dit de beste kans heeft om 'busy' errors te omzeilen
+                Arguments = $"--no-video --ao=sdl \"{track}\"", 
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            Process? p = Process.Start(psi);
+            if (p != null) { lock(actieveSpelers) { actieveSpelers.Add(p); } }
+        } catch (Exception ex) { Console.WriteLine($"Audio Fout: {ex.Message}"); }
+    }
+
     static void StopAlleMuziek()
     {
         lock(actieveSpelers) {
-            if (actieveSpelers.Count == 0) return;
-            Console.WriteLine("[STOP]");
             foreach (var p in actieveSpelers) {
                 try { if (!p.HasExited) p.Kill(); p.Dispose(); } catch { }
             }
             actieveSpelers.Clear();
         }
-        // KILLALL MPV VOOR DE ZEKERHEID
-        try { Process.Start("killall", "mpv"); } catch { }
+        try { Process.Start("pkill", "mpv"); } catch { }
     } 
 }
