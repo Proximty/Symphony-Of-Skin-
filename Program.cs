@@ -7,10 +7,9 @@ using System.Threading.Tasks;
 
 class PaalMuziek
 {
-    // Het basispad naar je muziekmap
+    // Gebruik Path.Combine voor Linux/Windows compatibiliteit
     static string basisPad = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "muziek");
 
-    // Koppeling tussen knoppen en hoofdcategorieën
     static Dictionary<ConsoleKey, string> mappen = new() {
         { ConsoleKey.UpArrow,    "2000s" },
         { ConsoleKey.DownArrow,  "2010s" },
@@ -20,44 +19,55 @@ class PaalMuziek
         { ConsoleKey.W,          "Pop" }
     };
 
-    // Speciale combinaties
     static Dictionary<string, string> comboMappen = new() {
         { "37,39", "secret1" }, 
         { "38,40", "Secret" }, 
         { "32,38", "secret3" }  
     };
 
-    // Lijst om alle 5 de actieve geluidsprocessen bij te houden
     static List<Process> actieveSpelers = new();
     static string huidigeActieveCombo = "";
     static HashSet<int> ingedrukteToetsen = new();
 
     static async Task Main()
     {
-        Console.WriteLine("--- Interactieve Muziekpaal Gestart ---");
+        Console.WriteLine("--- Interactieve Muziekpaal Gestart (Linux Mode) ---");
         Console.WriteLine($"Basispad: {basisPad}");
+
+        // Controleer of de map bestaat
+        if (!Directory.Exists(basisPad))
+        {
+            Console.WriteLine("WAARSCHUWING: De muziekmap is niet gevonden!");
+            Directory.CreateDirectory(basisPad);
+        }
 
         while (true)
         {
-            // 1. Check welke toetsen worden ingedrukt (Makey Makey simuleert toetsenbord)
+            // 1. Verzamel input
             while (Console.KeyAvailable) 
             {
-                int code = (int)Console.ReadKey(true).Key;
-                if (mappen.ContainsKey((ConsoleKey)code)) ingedrukteToetsen.Add(code);
+                // true zorgt ervoor dat de letter niet in de console verschijnt
+                var key = Console.ReadKey(true).Key;
+                if (mappen.ContainsKey(key)) 
+                {
+                    ingedrukteToetsen.Add((int)key);
+                }
             }
 
             var lijst = ingedrukteToetsen.OrderBy(x => x).ToList();
             string comboId = string.Join(",", lijst);
 
+            // 2. Logica voor afspelen
             if (lijst.Count > 0)
             {
                 if (comboId != huidigeActieveCombo)
                 {
                     string? categorieMap = null;
 
-                    // Check of het een combo is of een enkele toets
-                    if (comboMappen.ContainsKey(comboId)) categorieMap = comboMappen[comboId];
-                    else if (lijst.Count == 1) categorieMap = mappen[(ConsoleKey)lijst[0]];
+                    if (comboMappen.ContainsKey(comboId)) 
+                        categorieMap = comboMappen[comboId];
+                    else if (lijst.Count == 1) 
+                        categorieMap = mappen[(ConsoleKey)lijst[0]];
 
                     if (categorieMap != null) 
                     {
@@ -69,70 +79,73 @@ class PaalMuziek
             }
             else if (huidigeActieveCombo != "")
             {
-                // Geen toetsen meer ingedrukt? Stop alle lagen
                 StopAlleMuziek();
                 huidigeActieveCombo = "";
             }
 
-            // Korte pauze voor de CPU en om de Makey Makey tijd te geven
-            await Task.Delay(100); 
+            // 3. De Makey Makey herhaalt toetsaanslagen. 
+            // We wachten even en legen de lijst om te kijken of de toets nog steeds 'vast' zit.
+            await Task.Delay(150); 
             ingedrukteToetsen.Clear();
         }
     }
 
     static void SpeelLiedjeMetLagen(string categoriePad)
     {
-        if (!Directory.Exists(categoriePad))
-        {
-            Console.WriteLine($"Categorie niet gevonden: {categoriePad}");
-            return;
-        }
+        if (!Directory.Exists(categoriePad)) return;
 
-        // 1. Zoek alle mappen (bijv. "Alan Walker - Faded") in de categorie
         var liedjeMappen = Directory.GetDirectories(categoriePad);
-        
-        if (liedjeMappen.Length == 0)
-        {
-            Console.WriteLine($"Geen liedje-mappen gevonden in: {categoriePad}");
-            return;
-        }
+        if (liedjeMappen.Length == 0) return;
 
-        // 2. Kies een willekeurige map (een liedje)
         string gekozenLiedjeMap = liedjeMappen[new Random().Next(liedjeMappen.Length)];
         
-        // 3. Stop eerst wat er nu speelt
         StopAlleMuziek();
 
-        // 4. Zoek de 5 MP3's in deze specifieke map
+        // Pak alle mp3 bestanden
         var fragmenten = Directory.GetFiles(gekozenLiedjeMap, "*.mp3");
 
-        Console.WriteLine($"Speelt nu: {Path.GetFileName(gekozenLiedjeMap)} ({fragmenten.Length} lagen)");
+        Console.WriteLine($"[START] {Path.GetFileName(gekozenLiedjeMap)}");
 
         foreach (var track in fragmenten)
         {
             try {
-                // Start mpg123 voor elk bestand. Ze draaien nu parallel.
-                // -q is quiet mode, zodat je console schoon blijft.
-                var p = Process.Start("mpg123", $"-q \"{track}\"");
+                // Op Raspberry Pi is 'mpg123' goed, maar 'ffplay' is vaak beter voor sync.
+                // We gebruiken bash om het proces aan te roepen voor betere stabiliteit.
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "mpg123",
+                    Arguments = $"-q \"{track}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                };
+
+                var p = Process.Start(psi);
                 if (p != null) actieveSpelers.Add(p);
             } catch (Exception ex) {
-                Console.WriteLine($"Fout bij starten fragment {track}: {ex.Message}");
+                Console.WriteLine($"Fout: {ex.Message}");
             }
         }
     }
 
     static void StopAlleMuziek()
     {
+        if (actieveSpelers.Count == 0) return;
+
+        Console.WriteLine("[STOP] Alle lagen");
         foreach (var p in actieveSpelers)
         {
             try { 
                 if (!p.HasExited)
                 {
-                    p.Kill(); 
-                    p.WaitForExit();
+                    p.Kill(true); // true zorgt dat ook child-processes doodgaan
                 }
+                p.Dispose();
             } catch { }
         }
         actieveSpelers.Clear();
+        
+        // Extra veiligheid voor Linux: stop alle hangende mpg123 processen
+        try { Process.Start("killall", "mpg123"); } catch { }
     }
 }
