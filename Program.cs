@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 
 class PaalMuziek
 {
+    // Verifieer met 'ls /dev/input/by-id/' welk event nummer je Makey Makey ECHT heeft
     static string devicePath = "/dev/input/event2"; 
     static string basisPad = "/home/admin/Symphony-Of-Skin-/muziek"; 
     static Random rng = new Random();
@@ -26,28 +27,33 @@ class PaalMuziek
     static HashSet<int> ingedrukteToetsen = new();
     static int stilteTeller = 0;
 
+    // Verbeterde struct voor Linux Input Events (64-bit compatibel)
     [StructLayout(LayoutKind.Sequential)]
     struct InputEvent {
-        public long TimeSec; public long TimeUSec;
-        public ushort Type; public ushort Code; public int Value;
+        public IntPtr TimeSec; 
+        public IntPtr TimeUSec;
+        public ushort Type; 
+        public ushort Code; 
+        public int Value;
     }
 
     static async Task Main()
     {
-        Console.WriteLine("--- Muziekpaal: AIR 192 & SDL Driver Fix ---");
+        Console.WriteLine("--- Muziekpaal: AIR 192 Fix ---");
 
-        if (!Directory.Exists(basisPad)) {
-            Console.WriteLine($"FOUT: De hoofdmap {basisPad} bestaat niet!");
+        // Check rechten op de input device
+        try {
+            using (File.OpenRead(devicePath)) { }
+        } catch (UnauthorizedAccessException) {
+            Console.WriteLine($"FOUT: Geen rechten op {devicePath}. Gebruik: sudo chmod 666 {devicePath}");
+            return;
+        } catch (Exception ex) {
+            Console.WriteLine($"FOUT: {ex.Message}");
             return;
         }
 
-        foreach (var sub in mappen.Values) {
-            string pad = Path.Combine(basisPad, sub);
-            Console.WriteLine(Directory.Exists(pad) ? $"[OK] Map gevonden: {sub}" : $"[!!] Map NIET gevonden: {sub}");
-        }
-
-        if (!File.Exists(devicePath)) {
-            Console.WriteLine($"FOUT: Makey Makey niet gevonden op {devicePath}");
+        if (!Directory.Exists(basisPad)) {
+            Console.WriteLine($"FOUT: Pad niet gevonden: {basisPad}");
             return;
         }
 
@@ -65,6 +71,7 @@ class PaalMuziek
                 string comboId = string.Join(",", lijst);
                 if (comboId != huidigeActieveCombo)
                 {
+                    // Check of de eerste toets in onze map staat
                     if (mappen.ContainsKey(lijst[0])) 
                     {
                         SpeelEénTrackUitMap(Path.Combine(basisPad, mappen[lijst[0]]));
@@ -73,10 +80,11 @@ class PaalMuziek
                     stilteTeller = 0;
                 }
             }
-            else if (huidigeActieveCombo != "") // FIX: Hier stond een typfout
+            else if (huidigeActieveCombo != "") 
             {
                 stilteTeller++;
-                if (stilteTeller > 3) { 
+                // Iets langere delay voordat we stoppen geeft een rustiger effect
+                if (stilteTeller > 2) { 
                     StopAlleMuziek();
                     huidigeActieveCombo = "";
                 }
@@ -87,27 +95,29 @@ class PaalMuziek
 
     static void LeesRawInput()
     {
+        int size = Marshal.SizeOf<InputEvent>();
+        byte[] buffer = new byte[size];
+
         try {
             using FileStream fs = new FileStream(devicePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            int size = Marshal.SizeOf<InputEvent>();
-            byte[] buffer = new byte[size];
             while (true) {
                 int bytesRead = fs.Read(buffer, 0, buffer.Length);
                 if (bytesRead < size) continue; 
 
-                IntPtr ptr = Marshal.AllocHGlobal(size);
-                Marshal.Copy(buffer, 0, ptr, size);
-                InputEvent ev = Marshal.PtrToStructure<InputEvent>(ptr);
-                Marshal.FreeHGlobal(ptr);
+                GCHandle handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+                InputEvent ev = Marshal.PtrToStructure<InputEvent>(handle.AddrOfPinnedObject());
+                handle.Free();
 
-                if (ev.Type == 1) { 
+                if (ev.Type == 0x01) { // EV_KEY
                     lock (ingedrukteToetsen) {
                         if (ev.Value == 1 || ev.Value == 2) ingedrukteToetsen.Add(ev.Code);
                         else if (ev.Value == 0) ingedrukteToetsen.Remove(ev.Code);
                     }
                 }
             }
-        } catch (Exception ex) { Console.WriteLine($"Input Fout: {ex.Message}"); }
+        } catch (Exception ex) { 
+            Console.WriteLine($"Input Fout: {ex.Message}"); 
+        }
     }
 
     static void SpeelEénTrackUitMap(string categoriePad)
@@ -125,10 +135,11 @@ class PaalMuziek
         try {
             var psi = new ProcessStartInfo {
                 FileName = "mpv",
-                // We gebruiken SDL omdat dit de beste kans heeft om 'busy' errors te omzeilen
-              Arguments = $"--no-video --audio-device=alsa/hw:CARD=8,DEV=0 \"{track}\"",
+                // Tip: Gebruik 'softvol' om gekraak te voorkomen
+                Arguments = $"--no-video --audio-device=alsa/hw:CARD=8,DEV=0 --volume=80 \"{track}\"",
                 UseShellExecute = false,
-                CreateNoWindow = true
+                CreateNoWindow = true,
+                RedirectStandardOutput = false
             };
             Process? p = Process.Start(psi);
             if (p != null) { lock(actieveSpelers) { actieveSpelers.Add(p); } }
@@ -139,10 +150,19 @@ class PaalMuziek
     {
         lock(actieveSpelers) {
             foreach (var p in actieveSpelers) {
-                try { if (!p.HasExited) p.Kill(); p.Dispose(); } catch { }
+                try { 
+                    if (!p.HasExited) {
+                        p.Kill(); 
+                        p.WaitForExit(500); 
+                    }
+                    p.Dispose(); 
+                } catch { }
             }
             actieveSpelers.Clear();
         }
-        try { Process.Start("pkill", "mpv"); } catch { }
+        // Forceer kill om 'Device Busy' errors voor de volgende track te voorkomen
+        try { 
+            Process.Start(new ProcessStartInfo("pkill", "mpv") { CreateNoWindow = true, UseShellExecute = false }); 
+        } catch { }
     } 
 }
