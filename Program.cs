@@ -108,7 +108,7 @@ class PaalMuziek
         }
     }
 
- static void SpeelEénTrackUitMap(string categoriePad)
+static void SpeelEénTrackUitMap(string categoriePad)
 {
     if (!Directory.Exists(categoriePad)) return;
     var fragmenten = Directory.GetFiles(categoriePad, "*.mp3");
@@ -117,17 +117,14 @@ class PaalMuziek
     string track = fragmenten[rng.Next(fragmenten.Length)];
     StopAlleMuziek();
 
-    Console.WriteLine($"[PLAY] AIR 192 via FFplay: {Path.GetFileName(track)}");
+    Console.WriteLine($"[PLAY] AIR 192: {Path.GetFileName(track)}");
     
     try {
         var psi = new ProcessStartInfo {
             FileName = "ffplay",
-            // ARGUMENTEN UITGELEGD:
-            // -nodisp: Geen videoscherm
-            // -autoexit: Sluit proces na afloop
-            // -f alsa: Gebruik de ALSA audio driver
-            // "hw:2,0": Jouw specifieke AIR 192 kaart
-            Arguments = $"-nodisp -autoexit -loglevel quiet -f alsa \"hw:2,0\" \"{track}\"", 
+            // We gebruiken de instellingen die net in je terminal werkten
+            // -f alsa "hw:2,0" dwingt de output naar de AIR kaart
+            Arguments = $"-nodisp -autoexit -loglevel quiet -f alsa \"hw:2,0\" -af \"aresample=48000,pan=stereo|c0=c0|c1=c1\" \"{track}\"", 
             UseShellExecute = false,
             CreateNoWindow = true
         };
