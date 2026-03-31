@@ -91,35 +91,37 @@ class PaalMuziek
         } catch (Exception ex) { Console.WriteLine($"Input Fout: {ex.Message}"); }
     }
 
-    static void SpeelTrack(int toetsCode)
-    {
-        string categoriePad = Path.Combine(basisPad, mappen[toetsCode]);
-        if (!Directory.Exists(categoriePad)) return;
+static void SpeelTrack(int toetsCode)
+{
+    string categoriePad = Path.Combine(basisPad, mappen[toetsCode]);
+    if (!Directory.Exists(categoriePad)) return;
 
-        var fragmenten = Directory.GetFiles(categoriePad, "*.mp3");
-        if (fragmenten.Length == 0) return;
+    var fragmenten = Directory.GetFiles(categoriePad, "*.mp3");
+    if (fragmenten.Length == 0) return;
 
-        string track = fragmenten[rng.Next(fragmenten.Length)];
-        Console.WriteLine($"[LAYER START] {mappen[toetsCode]}: {Path.GetFileName(track)}");
+    string track = fragmenten[rng.Next(fragmenten.Length)];
+    Console.WriteLine($"[LAYER START] {mappen[toetsCode]}: {Path.GetFileName(track)}");
 
-        try {
-            var psi = new ProcessStartInfo {
-                FileName = "mpg123",
-                // hw:1,0 direct aanspreken voor lage latency
-                Arguments = $"-o alsa -a hw:1,0 -q \"{track}\"",
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
+    try {
+        var psi = new ProcessStartInfo {
+            FileName = "/bin/sh",
+            // Uitleg: 
+            // mpg123 -s stuurt RAW audio naar de uitgang
+            // aplay pikt dit op en stuurt het naar hw:1,0 (of hw:2,0 afhankelijk van je kaart)
+            Arguments = $"-c \"mpg123 -s \\\"{track}\\\" | aplay -D hw:1,0 -f cd\"",
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
 
-            Process? p = Process.Start(psi);
-            if (p != null) {
-                lock (actieveSpelers) { actieveSpelers.Add(p); }
-                p.WaitForExit(); // Wacht tot het nummer klaar is
-                lock (actieveSpelers) { actieveSpelers.Remove(p); }
-                p.Dispose();
-                Console.WriteLine($"[LAYER END] Track klaar.");
-            }
+        Process? p = Process.Start(psi);
+        if (p != null) {
+            lock (actieveSpelers) { actieveSpelers.Add(p); }
+            p.WaitForExit(); 
+            lock (actieveSpelers) { actieveSpelers.Remove(p); }
+            p.Dispose();
+            Console.WriteLine($"[LAYER END] Klaar.");
         }
-        catch (Exception ex) { Console.WriteLine($"Audio Fout: {ex.Message}"); }
     }
+    catch (Exception ex) { Console.WriteLine($"Audio Fout: {ex.Message}"); }
+}
 }
