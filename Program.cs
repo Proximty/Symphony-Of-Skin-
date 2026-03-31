@@ -8,7 +8,11 @@ using System.Threading.Tasks;
 class PaalMuziek
 {
     static string basisPad = Path.Combine(Directory.GetCurrentDirectory(), "muziek");
-    static Random rng = new Random(); // Toegevoegd voor het kiezen van 1 track
+    static Random rng = new Random();
+    
+    // Deze teller voorkomt dat de muziek stopt bij kleine haperingen van de Makey Makey
+    static int stilteTeller = 0;
+    const int MAX_STILTE = 3; // 3 x 150ms = 450ms buffer
 
     static Dictionary<ConsoleKey, string> mappen = new() {
         { ConsoleKey.UpArrow,    "2000s" },
@@ -31,21 +35,28 @@ class PaalMuziek
 
     static async Task Main()
     {
-        Console.WriteLine("--- Muziekpaal: 1 Track Modus ---");
+        Console.WriteLine("--- Muziekpaal: Gecorrigeerde Modus ---");
+        Console.WriteLine($"Pad: {basisPad}");
         
         if (!Directory.Exists(basisPad)) Directory.CreateDirectory(basisPad);
 
         while (true)
         {
+            // 1. Input opvangen
             while (Console.KeyAvailable) 
             {
                 var key = Console.ReadKey(true).Key;
-                if (mappen.ContainsKey(key)) ingedrukteToetsen.Add((int)key);
+                if (mappen.ContainsKey(key)) 
+                {
+                    ingedrukteToetsen.Add((int)key);
+                    stilteTeller = 0; // Reset teller bij input
+                }
             }
 
             var lijst = ingedrukteToetsen.OrderBy(x => x).ToList();
             string comboId = string.Join(",", lijst);
 
+            // 2. Afspeel logica
             if (lijst.Count > 0)
             {
                 if (comboId != huidigeActieveCombo)
@@ -61,66 +72,67 @@ class PaalMuziek
                     huidigeActieveCombo = comboId;
                 }
             }
-            else if (huidigeActieveCombo != "")
+            else 
             {
-                StopAlleMuziek();
-                huidigeActieveCombo = "";
+                // Alleen stoppen als er een tijdje GEEN input is geweest (Sustain)
+                stilteTeller++;
+                if (stilteTeller >= MAX_STILTE && huidigeActieveCombo != "")
+                {
+                    StopAlleMuziek();
+                    huidigeActieveCombo = "";
+                }
             }
 
+            // 3. Wachten en lijst legen voor de volgende check
             await Task.Delay(150); 
             ingedrukteToetsen.Clear();
         }
     }
 
-   static void SpeelEénTrackUitMap(string categoriePad)
-{
-    if (!Directory.Exists(categoriePad)) 
+    static void SpeelEénTrackUitMap(string categoriePad)
     {
-        Console.WriteLine($"Map niet gevonden: {categoriePad}");
-        return;
+        if (!Directory.Exists(categoriePad)) return;
+
+        var fragmenten = Directory.GetFiles(categoriePad, "*.mp3");
+        if (fragmenten.Length == 0) return;
+
+        string gekozenTrack = fragmenten[rng.Next(fragmenten.Length)];
+
+        StopAlleMuziek();
+        Console.WriteLine($"[PLAY] {Path.GetFileName(gekozenTrack)}");
+
+        try {
+            var psi = new ProcessStartInfo
+            {
+                FileName = "mpg123",
+                Arguments = $"-q \"{gekozenTrack}\"", 
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+
+            var p = Process.Start(psi);
+            if (p != null) actieveSpelers.Add(p);
+        } catch (Exception ex) {
+            Console.WriteLine($"Fout bij starten: {ex.Message}");
+        }
     }
 
-    var fragmenten = Directory.GetFiles(categoriePad, "*.mp3");
-    if (fragmenten.Length == 0) 
-    {
-        Console.WriteLine($"Geen MP3's in: {categoriePad}");
-        return;
-    }
-
-    string gekozenTrack = fragmenten[rng.Next(fragmenten.Length)];
-
-    StopAlleMuziek();
-
-    // Log het volledige pad om te controleren of het nu wel klopt
-    Console.WriteLine($"[PLAY] Proberen te spelen: {gekozenTrack}");
-
-    try {
-        var psi = new ProcessStartInfo
-        {
-            FileName = "mpg123",
-            // CRUCIAAL: De extra escape-tekens \" zorgen dat Linux het pad als één geheel ziet,
-            // zelfs als er spaties in staan (zoals "Alan Walker - Faded.mp3").
-            Arguments = $"-q \"{gekozenTrack}\"", 
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            CreateNoWindow = true
-        };
-
-        var p = Process.Start(psi);
-        if (p != null) actieveSpelers.Add(p);
-    } catch (Exception ex) {
-        Console.WriteLine($"Fout bij starten: {ex.Message}");
-    }
-}
     static void StopAlleMuziek()
     {
         if (actieveSpelers.Count == 0) return;
+        
+        Console.WriteLine("[STOP]");
         foreach (var p in actieveSpelers)
         {
-            try { if (!p.HasExited) p.Kill(true); p.Dispose(); } catch { }
+            try { 
+                if (!p.HasExited) p.Kill(true); 
+                p.Dispose(); 
+            } catch { }
         }
         actieveSpelers.Clear();
-        try { Process.Start("killall", "mpg123"); } catch { }
+
+        // Killall weggelaten om "no process found" meldingen te voorkomen
     }
 }
