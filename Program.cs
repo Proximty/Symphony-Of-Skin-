@@ -105,10 +105,8 @@ static void SpeelTrack(int toetsCode)
         var p = new Process();
         p.StartInfo.FileName = "/bin/sh";
         
-        // UITLEG:
-        // dmixed:0 -> Gebruik de software mixer op kaart 0 (AIR 192)
-        // Hiermee kun je 5 toetsen tegelijk indrukken en ze mixen prachtig door elkaar.
-        p.StartInfo.Arguments = $"-c \"mpg123 -s \\\"{track}\\\" | aplay -D plug:dmix:0 -f cd\"";
+        
+    p.StartInfo.Arguments = $"-c \"mpg123 -s \\\"{track}\\\" | aplay -D plug:dmix:0 -c 2 -f cd\"";
         
         p.StartInfo.UseShellExecute = false;
         p.StartInfo.CreateNoWindow = true;
