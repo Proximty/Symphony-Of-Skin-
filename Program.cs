@@ -7,86 +7,132 @@ using System.Threading.Tasks;
 
 class PaalMuziek
 {
-    // Mappen per toets (gebruik ConsoleKey voor Makey Makey op de Pi)
+    // Het basispad naar je muziekmap
+    static string basisPad = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "muziek");
+
+    // Koppeling tussen knoppen en hoofdcategorieën
     static Dictionary<ConsoleKey, string> mappen = new() {
-        { ConsoleKey.UpArrow,    "/muziek/2000s" },
-        { ConsoleKey.DownArrow,  "/muziek/2010s" },
-        { ConsoleKey.LeftArrow,  "/muziek/Anime" },
-        { ConsoleKey.RightArrow, "/muziek/EDM" },
-        { ConsoleKey.Spacebar,   "/muziek/Game" },
-        { ConsoleKey.W,          "/muziek/Pop" }
+        { ConsoleKey.UpArrow,    "2000s" },
+        { ConsoleKey.DownArrow,  "2010s" },
+        { ConsoleKey.LeftArrow,  "Anime" },
+        { ConsoleKey.RightArrow, "EDM" },
+        { ConsoleKey.Spacebar,   "Game" },
+        { ConsoleKey.W,          "Pop" }
     };
 
-    // Jouw combo structuur (getallen zijn de (int)ConsoleKey waarden)
+    // Speciale combinaties
     static Dictionary<string, string> comboMappen = new() {
-        { "37,39", "/muziek/secret1" }, // Left + Right
-        { "38,40", "/muziek/Secret" }, // Up + Down
-        { "32,38", "/muziek/secret3" }  // Space + Up 
+        { "37,39", "secret1" }, 
+        { "38,40", "Secret" }, 
+        { "32,38", "secret3" }  
     };
 
-    static Process? speler = null;
+    // Lijst om alle 5 de actieve geluidsprocessen bij te houden
+    static List<Process> actieveSpelers = new();
     static string huidigeActieveCombo = "";
     static HashSet<int> ingedrukteToetsen = new();
 
     static async Task Main()
     {
-        Console.WriteLine("--- Paal Gestart (Makey Makey + Combo Mode) ---");
+        Console.WriteLine("--- Interactieve Muziekpaal Gestart ---");
+        Console.WriteLine($"Basispad: {basisPad}");
 
         while (true)
         {
-            // 1. Verzamel alle toetsen die op dit moment "vuren"
+            // 1. Check welke toetsen worden ingedrukt (Makey Makey simuleert toetsenbord)
             while (Console.KeyAvailable) 
             {
                 int code = (int)Console.ReadKey(true).Key;
                 if (mappen.ContainsKey((ConsoleKey)code)) ingedrukteToetsen.Add(code);
             }
 
-            // 2. Maak de combo-ID (bijv "37,39")
             var lijst = ingedrukteToetsen.OrderBy(x => x).ToList();
             string comboId = string.Join(",", lijst);
 
-            // 3. Check wat we moeten doen
             if (lijst.Count > 0)
             {
                 if (comboId != huidigeActieveCombo)
                 {
-                    string? pad = null;
+                    string? categorieMap = null;
 
-                    if (comboMappen.ContainsKey(comboId)) pad = comboMappen[comboId];
-                    else if (lijst.Count == 1) pad = mappen[(ConsoleKey)lijst[0]];
+                    // Check of het een combo is of een enkele toets
+                    if (comboMappen.ContainsKey(comboId)) categorieMap = comboMappen[comboId];
+                    else if (lijst.Count == 1) categorieMap = mappen[(ConsoleKey)lijst[0]];
 
-                    if (pad != null) SpeelMap(pad);
+                    if (categorieMap != null) 
+                    {
+                        string volledigPad = Path.Combine(basisPad, categorieMap);
+                        SpeelLiedjeMetLagen(volledigPad);
+                    }
                     huidigeActieveCombo = comboId;
                 }
             }
             else if (huidigeActieveCombo != "")
             {
-                StopMuziek();
+                // Geen toetsen meer ingedrukt? Stop alle lagen
+                StopAlleMuziek();
                 huidigeActieveCombo = "";
             }
 
-            // 4. Reset voor de volgende scan (Makey Makey herhaalt de toetsen zelf)
+            // Korte pauze voor de CPU en om de Makey Makey tijd te geven
             await Task.Delay(100); 
             ingedrukteToetsen.Clear();
         }
     }
 
-    static void SpeelMap(string pad)
+    static void SpeelLiedjeMetLagen(string categoriePad)
     {
-        if (!Directory.Exists(pad)) return;
-        var bestanden = Directory.GetFiles(pad, "*.mp3");
-        if (bestanden.Length == 0) return;
+        if (!Directory.Exists(categoriePad))
+        {
+            Console.WriteLine($"Categorie niet gevonden: {categoriePad}");
+            return;
+        }
 
-        string track = bestanden[new Random().Next(bestanden.Length)];
-        StopMuziek();
-        try {
-            speler = Process.Start("mpg123", $"-q \"{track}\"");
-            Console.WriteLine($"Speelt nu: {Path.GetFileName(track)}");
-        } catch { }
+        // 1. Zoek alle mappen (bijv. "Alan Walker - Faded") in de categorie
+        var liedjeMappen = Directory.GetDirectories(categoriePad);
+        
+        if (liedjeMappen.Length == 0)
+        {
+            Console.WriteLine($"Geen liedje-mappen gevonden in: {categoriePad}");
+            return;
+        }
+
+        // 2. Kies een willekeurige map (een liedje)
+        string gekozenLiedjeMap = liedjeMappen[new Random().Next(liedjeMappen.Length)];
+        
+        // 3. Stop eerst wat er nu speelt
+        StopAlleMuziek();
+
+        // 4. Zoek de 5 MP3's in deze specifieke map
+        var fragmenten = Directory.GetFiles(gekozenLiedjeMap, "*.mp3");
+
+        Console.WriteLine($"Speelt nu: {Path.GetFileName(gekozenLiedjeMap)} ({fragmenten.Length} lagen)");
+
+        foreach (var track in fragmenten)
+        {
+            try {
+                // Start mpg123 voor elk bestand. Ze draaien nu parallel.
+                // -q is quiet mode, zodat je console schoon blijft.
+                var p = Process.Start("mpg123", $"-q \"{track}\"");
+                if (p != null) actieveSpelers.Add(p);
+            } catch (Exception ex) {
+                Console.WriteLine($"Fout bij starten fragment {track}: {ex.Message}");
+            }
+        }
     }
 
-    static void StopMuziek()
+    static void StopAlleMuziek()
     {
-        try { speler?.Kill(); } catch { }
+        foreach (var p in actieveSpelers)
+        {
+            try { 
+                if (!p.HasExited)
+                {
+                    p.Kill(); 
+                    p.WaitForExit();
+                }
+            } catch { }
+        }
+        actieveSpelers.Clear();
     }
 }
