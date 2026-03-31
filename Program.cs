@@ -134,7 +134,8 @@ class PaalMuziek
                 FileName = "mpg123",
                 // we gebruiken 'default' of 'hw:1,0'. Test dit met 'aplay -l'
                 // -q is quiet, --realtime voorkomt haperingen
-                Arguments = $"-a default -q --realtime \"{track}\"",
+               // Voeg -o alsa toe om JACK te negeren
+              Arguments = $"-o alsa -a default -q \"{track}\"",
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
