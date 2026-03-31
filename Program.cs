@@ -126,7 +126,7 @@ class PaalMuziek
             var psi = new ProcessStartInfo {
                 FileName = "mpv",
                 // We gebruiken SDL omdat dit de beste kans heeft om 'busy' errors te omzeilen
-                Arguments = $"--no-video --ao=sdl \"{track}\"", 
+              Arguments = $"--no-video --audio-device=alsa/hw:CARD=8,DEV=0 \"{track}\"",
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
