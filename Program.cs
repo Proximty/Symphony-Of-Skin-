@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 class PaalMuziek
 {
     static string devicePath = "/dev/input/event2"; 
-    static string basisPad = "/home/admin/Symphony-Of-Skin-/muziek"; 
+  static string basisPad = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "muziek");
     static Random rng = new Random();
 
     static Dictionary<int, string> mappen = new() {
