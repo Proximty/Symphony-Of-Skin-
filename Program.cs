@@ -72,36 +72,47 @@ class PaalMuziek
         }
     }
 
-    static void SpeelEénTrackUitMap(string categoriePad)
+   static void SpeelEénTrackUitMap(string categoriePad)
+{
+    if (!Directory.Exists(categoriePad)) 
     {
-        if (!Directory.Exists(categoriePad)) return;
-
-        var fragmenten = Directory.GetFiles(categoriePad, "*.mp3");
-        if (fragmenten.Length == 0) return;
-
-        // KIES HIER 1 WILLEKEURIGE TRACK
-        string gekozenTrack = fragmenten[rng.Next(fragmenten.Length)];
-
-        StopAlleMuziek();
-
-        Console.WriteLine($"[PLAY] {Path.GetFileName(gekozenTrack)}");
-
-        try {
-            var psi = new ProcessStartInfo
-            {
-                FileName = "mpg123",
-                Arguments = $"-q \"{gekozenTrack}\"",
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            var p = Process.Start(psi);
-            if (p != null) actieveSpelers.Add(p);
-        } catch (Exception ex) {
-            Console.WriteLine($"Fout: {ex.Message}");
-        }
+        Console.WriteLine($"Map niet gevonden: {categoriePad}");
+        return;
     }
 
+    var fragmenten = Directory.GetFiles(categoriePad, "*.mp3");
+    if (fragmenten.Length == 0) 
+    {
+        Console.WriteLine($"Geen MP3's in: {categoriePad}");
+        return;
+    }
+
+    string gekozenTrack = fragmenten[rng.Next(fragmenten.Length)];
+
+    StopAlleMuziek();
+
+    // Log het volledige pad om te controleren of het nu wel klopt
+    Console.WriteLine($"[PLAY] Proberen te spelen: {gekozenTrack}");
+
+    try {
+        var psi = new ProcessStartInfo
+        {
+            FileName = "mpg123",
+            // CRUCIAAL: De extra escape-tekens \" zorgen dat Linux het pad als één geheel ziet,
+            // zelfs als er spaties in staan (zoals "Alan Walker - Faded.mp3").
+            Arguments = $"-q \"{gekozenTrack}\"", 
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true
+        };
+
+        var p = Process.Start(psi);
+        if (p != null) actieveSpelers.Add(p);
+    } catch (Exception ex) {
+        Console.WriteLine($"Fout bij starten: {ex.Message}");
+    }
+}
     static void StopAlleMuziek()
     {
         if (actieveSpelers.Count == 0) return;
