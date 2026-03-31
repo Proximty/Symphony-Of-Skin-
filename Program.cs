@@ -115,37 +115,40 @@ class PaalMuziek
     }
 
     static void SpeelEénTrackUitMap(string categoriePad)
-    { 
-        if (!Directory.Exists(categoriePad)) {
-            Console.WriteLine($"[!] Map niet gevonden: {categoriePad}");
-            return;
-        }
-
-        var fragmenten = Directory.GetFiles(categoriePad, "*.mp3");
-        if (fragmenten.Length == 0) return;
-
-        string track = fragmenten[rng.Next(fragmenten.Length)];
-        StopAlleMuziek();
-
-        Console.WriteLine($"[PLAY] {Path.GetFileName(track)}");
-        
-        try {
-            var psi = new ProcessStartInfo {
-                FileName = "mpg123",
-                // we gebruiken 'default' of 'hw:1,0'. Test dit met 'aplay -l'
-                // -q is quiet, --realtime voorkomt haperingen
-               // Voeg -o alsa toe om JACK te negeren
-              Arguments = $"-o alsa -a default -q \"{track}\"",
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-            Process? p = Process.Start(psi);
-            if (p != null) { lock(actieveSpelers) { actieveSpelers.Add(p); } }
-        } catch (Exception ex) { 
-            Console.WriteLine($"Audio Fout: {ex.Message}"); 
-        }
+{ 
+    if (!Directory.Exists(categoriePad)) {
+        Console.WriteLine($"[!] Map niet gevonden: {categoriePad}");
+        return;
     }
 
+    var fragmenten = Directory.GetFiles(categoriePad, "*.mp3");
+    if (fragmenten.Length == 0) {
+        Console.WriteLine($"[!] Geen MP3's in: {categoriePad}");
+        return;
+    }
+
+    string track = fragmenten[rng.Next(fragmenten.Length)];
+    StopAlleMuziek();
+
+    Console.WriteLine($"[PLAY] {Path.GetFileName(track)}");
+    
+    try {
+        var psi = new ProcessStartInfo {
+            FileName = "mpg123",
+            // -o alsa: Forceert ALSA (geen JACK errors meer)
+            // -a default: Gebruikt de standaard geluidskaart (of gebruik hw:1,0)
+            // --buffer 1024: Voegt een kleine buffer toe voor stabiliteit
+            Arguments = $"-o alsa -a default -q --buffer 1024 \"{track}\"",
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardError = false // Zet op true als je meer debug info wilt
+        };
+        Process? p = Process.Start(psi);
+        if (p != null) { lock(actieveSpelers) { actieveSpelers.Add(p); } }
+    } catch (Exception ex) { 
+        Console.WriteLine($"Audio Fout: {ex.Message}"); 
+    }
+}  
     static void StopAlleMuziek()
     {
         lock(actieveSpelers) {
