@@ -103,16 +103,12 @@ static void SpeelTrack(int toetsCode)
 
     try {
         var p = new Process();
-        // We gebruiken de shell om twee programma's aan elkaar te knopen
         p.StartInfo.FileName = "/bin/sh";
         
-        // UITLEG ARGUMENTEN:
-        // mpg123 -s: Stuur de muziek als ruwe data naar de uitgang (stdout)
-        // |: De 'pijp' die de data doorgeeft
-        // aplay: De standaard Linux speler die de data ontvangt
-        // -D plughw:1,0: Stuurt het direct naar je AIR 192 (Card 1)
-        // -f cd: Vertelt aplay dat het CD-kwaliteit is (44100Hz, 16bit, Stereo)
-        p.StartInfo.Arguments = $"-c \"mpg123 -s \\\"{track}\\\" | aplay -D plughw:1,0 -f cd\"";
+        // UITLEG:
+        // dmixed:0 -> Gebruik de software mixer op kaart 0 (AIR 192)
+        // Hiermee kun je 5 toetsen tegelijk indrukken en ze mixen prachtig door elkaar.
+        p.StartInfo.Arguments = $"-c \"mpg123 -s \\\"{track}\\\" | aplay -D plug:dmix:0 -f cd\"";
         
         p.StartInfo.UseShellExecute = false;
         p.StartInfo.CreateNoWindow = true;
@@ -120,7 +116,11 @@ static void SpeelTrack(int toetsCode)
         p.Start();
         
         lock (actieveSpelers) { actieveSpelers.Add(p); }
+        
+        // We draaien dit in een Task.Run (via de aanroep in Main), 
+        // dus WaitForExit blokkeert de andere toetsen niet.
         p.WaitForExit();
+        
         lock (actieveSpelers) { actieveSpelers.Remove(p); }
         p.Dispose();
     } 
