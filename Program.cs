@@ -13,7 +13,7 @@ class PaalMuziek
     static string devicePath   = "/dev/input/event2";
     static string basisPad     = "/home/admin/Symphony-Of-Skin-/muziek";
     static string audioDevice  = "default";
-    static string outputDriver = "";  // "pulse" for PulseAudio, "alsa" for ALSA
+    static string outputDriver = "pulse";  // "pulse" for PulseAudio, "alsa" for ALSA
     static int    volume       = 200;   // mpg123 -f flag (100 = normal, 200 = 2x)
     static bool   loopTracks   = false;
     static bool   debugLog     = true;
