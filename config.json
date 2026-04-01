@@ -2,7 +2,7 @@
   "devicePath": "/dev/input/event6",
   "musicBasePath": "/home/admin/Symphony-Of-Skin-/muziek",
   "audioDevice": "default",
-  "outputDriver": "",
+  "outputDriver": "alsa",
   "volume": 200,
   "loopTracks": false,
   "debugLogging": true,
