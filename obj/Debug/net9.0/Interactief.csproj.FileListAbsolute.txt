@@ -70,3 +70,4 @@ C:\projecten\Symphony-Of-Skin-\obj\Debug\net9.0\refint\Interactief.dll
 C:\projecten\Symphony-Of-Skin-\obj\Debug\net9.0\Interactief.pdb
 C:\projecten\Symphony-Of-Skin-\obj\Debug\net9.0\Interactief.genruntimeconfig.cache
 C:\projecten\Symphony-Of-Skin-\obj\Debug\net9.0\ref\Interactief.dll
+C:\projecten\Symphony-Of-Skin-\bin\Debug\net9.0\System.Device.Gpio.dll

@@ -66,6 +66,10 @@
             "SpotifyAPI.Web.Auth": {
               "target": "Package",
               "version": "[7.4.2, )"
+            },
+            "System.Device.Gpio": {
+              "target": "Package",
+              "version": "[4.1.0, )"
             }
           },
           "imports": [
