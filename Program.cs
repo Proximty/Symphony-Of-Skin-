@@ -23,7 +23,7 @@ class PaalMuziek
 
     // ── State ─────────────────────────────────────────────────────────────────
     static Random            rng               = new();
-    static List<Process>     actieveSpelers    = new();
+    static Dictionary<int, Process> actieveSpelers = new();
     static readonly string[] _metadataLabels  = ["Title:", "Artist:", "Album:", "Year:", "Genre:", "Comment:"];
     static HashSet<int>      actieveToetsenSessie = new();
     static HashSet<int>      ingedrukteToetsen  = new();
@@ -220,6 +220,14 @@ class PaalMuziek
 
             Log($"[CMD]  mpg123 {args}");
 
+            // Kill previous process for this key if it exists
+            lock (actieveSpelers) {
+                if (actieveSpelers.TryGetValue(toetsCode, out var oldP)) {
+                    try { if (!oldP.HasExited) oldP.Kill(); } catch { }
+                    actieveSpelers.Remove(toetsCode);
+                }
+            }
+
             var p = new Process();
             p.StartInfo.FileName               = "mpg123";
             p.StartInfo.Arguments              = args;
@@ -236,11 +244,14 @@ class PaalMuziek
             p.Start();
             p.BeginErrorReadLine();
 
-            lock (actieveSpelers) { actieveSpelers.Add(p); }
+            lock (actieveSpelers) { actieveSpelers[toetsCode] = p; }
             p.WaitForExit();
-            lock (actieveSpelers) { actieveSpelers.Remove(p); }
+            lock (actieveSpelers) { 
+                if (actieveSpelers.TryGetValue(toetsCode, out var currentP) && currentP == p)
+                    actieveSpelers.Remove(toetsCode); 
+            }
 
-            if (p.ExitCode != 0)
+            if (p.ExitCode != 0 && p.ExitCode != 1 && p.ExitCode != 137) // 137 is SIGKILL
                 Console.WriteLine($"[WARN] mpg123 exitcode {p.ExitCode} voor {Path.GetFileName(track)}");
         }
         catch (Exception ex) { Console.WriteLine($"[PLAY] Fout: {ex.Message}"); }
