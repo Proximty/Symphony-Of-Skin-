@@ -12,7 +12,8 @@ class PaalMuziek
     // ── Config (loaded from config.json, hot-reloaded every 5s) ───────────────
     static string devicePath   = "/dev/input/event2";
     static string basisPad     = "/home/admin/Symphony-Of-Skin-/muziek";
-    static string audioDevice  = "plug:hw:0,0";
+    static string audioDevice  = "default";
+    static string outputDriver = "pulse";  // "pulse" for PulseAudio, "alsa" for ALSA
     static int    volume       = 200;   // mpg123 -f flag (100 = normal, 200 = 2x)
     static bool   loopTracks   = false;
     static bool   debugLog     = true;
@@ -56,7 +57,7 @@ class PaalMuziek
         _ = Task.Run(HotReloadConfig);
 
         Log($"Luisteren op {devicePath}");
-        Log($"Audio device : {audioDevice}   Volume: {volume}");
+        Log($"Audio device : {audioDevice}   Volume: {volume}   Driver: {outputDriver}");
         Log($"Mappings     : {string.Join(", ", mappen.Select(kv => $"{kv.Key}={kv.Value}"))}");
         Log("Druk een Makey Makey-knop in...");
 
@@ -107,6 +108,7 @@ class PaalMuziek
             if (root.TryGetProperty("devicePath",    out var dp))  devicePath  = dp.GetString()!;
             if (root.TryGetProperty("musicBasePath", out var mp))  basisPad    = mp.GetString()!;
             if (root.TryGetProperty("audioDevice",   out var ad))  audioDevice = ad.GetString()!;
+            if (root.TryGetProperty("outputDriver",  out var od))  outputDriver = od.GetString()!;
             if (root.TryGetProperty("volume",        out var vl))  volume      = vl.GetInt32();
             if (root.TryGetProperty("loopTracks",    out var lt))  loopTracks  = lt.GetBoolean();
             if (root.TryGetProperty("debugLogging",  out var dl))  debugLog    = dl.GetBoolean();
@@ -214,7 +216,7 @@ class PaalMuziek
         Console.WriteLine($"[PLAY] {Path.GetFileName(track)}  (toets {toetsCode})");
 
         try {
-            var args = $"-o alsa -a {audioDevice} -f {volume} --resync-limit -1";
+            var args = $"-o {outputDriver} -a {audioDevice} -f {volume} --resync-limit -1";
             if (loopTracks) args += " --loop -1";
             args += $" \"{track}\"";
 
