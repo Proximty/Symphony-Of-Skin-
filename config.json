@@ -1,7 +1,7 @@
 {
   "devicePath": "/dev/input/event2",
   "musicBasePath": "/home/admin/Symphony-Of-Skin-/muziek",
-  "audioDevice": "plughw:0,0",
+  "audioDevice": "plughw:A8,0",
   "volume": 200,
   "loopTracks": false,
   "debugLogging": true,
