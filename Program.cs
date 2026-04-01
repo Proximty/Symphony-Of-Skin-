@@ -214,7 +214,7 @@ class PaalMuziek
         Console.WriteLine($"[PLAY] {Path.GetFileName(track)}  (toets {toetsCode})");
 
         try {
-            var args = $"-a {audioDevice} -f {volume} --buffer 1024 --resync-limit -1";
+            var args = $"-o alsa -a {audioDevice} -f {volume} --resync-limit -1";
             if (loopTracks) args += " --loop -1";
             args += $" \"{track}\"";
 
