@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 class PaalMuziek
 {
     // ── Config (loaded from config.json, hot-reloaded every 5s) ───────────────
-    static string devicePath   = "/dev/input/event2";
+    static string devicePath   = "/dev/input/event6";
     static string basisPad     = "/home/admin/Symphony-Of-Skin-/muziek";
     static string audioDevice  = "default";
     static string outputDriver = "";  // "pulse" for PulseAudio, "alsa" for ALSA
