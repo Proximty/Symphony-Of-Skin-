@@ -24,6 +24,7 @@ class PaalMuziek
     // ── State ─────────────────────────────────────────────────────────────────
     static Random            rng               = new();
     static List<Process>     actieveSpelers    = new();
+    static readonly string[] _metadataLabels  = ["Title:", "Artist:", "Album:", "Year:", "Genre:", "Comment:"];
     static HashSet<int>      actieveToetsenSessie = new();
     static HashSet<int>      ingedrukteToetsen  = new();
 
@@ -213,7 +214,7 @@ class PaalMuziek
         Console.WriteLine($"[PLAY] {Path.GetFileName(track)}  (toets {toetsCode})");
 
         try {
-            var args = $"-a {audioDevice} -f {volume} --buffer 1024 --resync-limit -1";
+            var args = $"-o alsa -a {audioDevice} -f {volume} --buffer 1024 --resync-limit -1";
             if (loopTracks) args += " --loop -1";
             args += $" \"{track}\"";
 
@@ -227,8 +228,9 @@ class PaalMuziek
             p.StartInfo.RedirectStandardError  = true;   // capture mpg123 errors
 
             p.ErrorDataReceived += (_, e) => {
-                if (!string.IsNullOrWhiteSpace(e.Data))
-                    Console.WriteLine($"[mpg123] {e.Data}");
+                if (string.IsNullOrWhiteSpace(e.Data)) return;
+                if (_metadataLabels.Any(label => e.Data.TrimStart().StartsWith(label))) return;
+                Console.WriteLine($"[mpg123] {e.Data}");
             };
 
             p.Start();
