@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -17,16 +17,16 @@ class PaalMuziek
     static int    volume       = 200;   // mpg123 -f flag (100 = normal, 200 = 2x)
     static bool   loopTracks   = false;
     static bool   debugLog     = true;
-    static Dictionary<int, string> mappen = new();
+    static Dictionary<string, string> mappen = new();
 
     static readonly string ConfigPath = Path.Combine(
         AppContext.BaseDirectory, "config.json");
 
     // ── State ─────────────────────────────────────────────────────────────────
     static Random            rng               = new();
-    static Dictionary<int, Process> actieveSpelers = new();
+    static Dictionary<string, Process> actieveSpelers = new();
     static readonly string[] _metadataLabels  = ["Title:", "Artist:", "Album:", "Year:", "Genre:", "Comment:"];
-    static HashSet<int>      actieveToetsenSessie = new();
+    static HashSet<string>      actieveToetsenSessie = new();
     static HashSet<int>      ingedrukteToetsen  = new();
 
     [StructLayout(LayoutKind.Sequential)]
@@ -66,12 +66,32 @@ class PaalMuziek
             List<int> huidigeLijst;
             lock (ingedrukteToetsen) { huidigeLijst = ingedrukteToetsen.ToList(); }
 
-            foreach (int toets in huidigeLijst)
+            List<string> actieveCombinaties = new List<string>();
+            lock (mappen) {
+                foreach (var map in mappen.Keys) {
+                    var keys = map.Split(',').Select(int.Parse).ToList();
+                    if (keys.All(k => huidigeLijst.Contains(k))) {
+                        actieveCombinaties.Add(map);
+                    }
+                }
+            }
+
+            List<string> filteredCombinaties = new List<string>();
+            foreach (var combo in actieveCombinaties) {
+                var comboKeys = combo.Split(',').Select(int.Parse).ToList();
+                bool isSubset = actieveCombinaties.Any(other => 
+                    other != combo && 
+                    !comboKeys.Except(other.Split(',').Select(int.Parse)).Any()
+                );
+                if (!isSubset) filteredCombinaties.Add(combo);
+            }
+
+            foreach (string combo in filteredCombinaties)
             {
                 lock (actieveToetsenSessie) {
-                    if (!actieveToetsenSessie.Contains(toets) && mappen.ContainsKey(toets)) {
-                        actieveToetsenSessie.Add(toets);
-                        int captured = toets;
+                    if (!actieveToetsenSessie.Contains(combo)) {
+                        actieveToetsenSessie.Add(combo);
+                        string captured = combo;
                         _ = Task.Run(() => SpeelTrack(captured));
                     }
                 }
@@ -79,7 +99,7 @@ class PaalMuziek
 
             // Stop tracks whose key was released
             lock (actieveToetsenSessie) {
-                actieveToetsenSessie.RemoveWhere(t => !huidigeLijst.Contains(t));
+                actieveToetsenSessie.RemoveWhere(c => !filteredCombinaties.Contains(c));
             }
 
             await Task.Delay(50);
@@ -95,8 +115,8 @@ class PaalMuziek
                 // keep existing defaults
                 if (mappen.Count == 0)
                     mappen = new() {
-                        { 103, "2000s" }, { 108, "2010s" }, { 105, "Anime" },
-                        { 106, "EDM"   }, { 57,  "Game"  }, { 17,  "Pop"   }
+                        { "103", "2000s" }, { "108", "2010s" }, { "105", "Anime" },
+                        { "106", "EDM"   }, { "57",  "Game"  }, { "17",  "Pop"   }, { "103,108", "Secret" }
                     };
                 return;
             }
@@ -115,10 +135,13 @@ class PaalMuziek
 
             // Key mappings
             if (root.TryGetProperty("keyMappings", out var km)) {
-                var nieuweMap = new Dictionary<int, string>();
-                foreach (var entry in km.EnumerateObject())
-                    if (int.TryParse(entry.Name, out int code))
-                        nieuweMap[code] = entry.Value.GetString()!;
+                var nieuweMap = new Dictionary<string, string>();
+                foreach (var entry in km.EnumerateObject()) {
+                    try {
+                        var sortedKeys = string.Join(",", entry.Name.Split(',').Select(k => k.Trim()).Select(int.Parse).OrderBy(k => k));
+                        nieuweMap[sortedKeys] = entry.Value.GetString()!;
+                    } catch { /* skip invalid keys */ }
+                }
                 lock (mappen) { mappen = nieuweMap; }
                 Log($"[CONFIG] Geladen: {mappen.Count} mappings, device={audioDevice}, vol={volume}");
             }
@@ -177,7 +200,7 @@ class PaalMuziek
     }
 
     // ── Track picker ──────────────────────────────────────────────────────────
-    static string GetWillekeurigeTrack(int toetsCode)
+    static string GetWillekeurigeTrack(string toetsCode)
     {
         try {
             string mapNaam;
@@ -205,7 +228,7 @@ class PaalMuziek
     }
 
     // ── Player ────────────────────────────────────────────────────────────────
-    static void SpeelTrack(int toetsCode)
+    static void SpeelTrack(string toetsCode)
     {
         string track = GetWillekeurigeTrack(toetsCode);
         if (string.IsNullOrEmpty(track)) {
