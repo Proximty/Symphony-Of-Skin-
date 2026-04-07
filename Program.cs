@@ -98,8 +98,23 @@ class PaalMuziek
             }
 
             // Stop tracks whose key was released
+            List<string> gestopt = new List<string>();
             lock (actieveToetsenSessie) {
-                actieveToetsenSessie.RemoveWhere(c => !filteredCombinaties.Contains(c));
+                var teVerwijderen = actieveToetsenSessie.Where(c => !filteredCombinaties.Contains(c)).ToList();
+                foreach (var c in teVerwijderen) {
+                    actieveToetsenSessie.Remove(c);
+                    gestopt.Add(c);
+                }
+            }
+
+            foreach (var stopCombo in gestopt) {
+                lock (actieveSpelers) {
+                    if (actieveSpelers.TryGetValue(stopCombo, out var p)) {
+                        try { if (!p.HasExited) p.Kill(); } catch { }
+                        actieveSpelers.Remove(stopCombo);
+                        Log($"[STOP] Track gestopt (toets losgelaten: {stopCombo})");
+                    }
+                }
             }
 
             await Task.Delay(50);
