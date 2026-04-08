@@ -41,11 +41,11 @@ class PaalMuziek
 
         LaadConfig();   // first load
 
-        if (!File.Exists(devicePath)) {
-            Console.WriteLine($"FOUT: Input device niet gevonden: {devicePath}");
-            Console.WriteLine("  → Run:  ls /dev/input/event*   en pas config.json aan.");
-            return;
+        while (!File.Exists(devicePath)) {
+            Console.WriteLine($"[INIT] USB Makey-Makey nog niet gevonden op {devicePath}. Wachten...");
+            await Task.Delay(2000);
         }
+        
         if (!Directory.Exists(basisPad)) {
             Console.WriteLine($"FOUT: Muziekmap niet gevonden: {basisPad}");
             Console.WriteLine("  → Pas 'musicBasePath' in config.json aan.");
