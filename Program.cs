@@ -14,7 +14,7 @@ class PaalMuziek
     static string basisPad     = "/home/admin/Symphony-Of-Skin-/muziek";
     static string audioDevice  = "default";
     static string outputDriver = "";  // "pulse" for PulseAudio, "alsa" for ALSA
-    static int    volume       = 200;   // mpg123 -f flag (100 = normal, 200 = 2x)
+    static int    volume       = 100;   // mpv percentage flag (100 = normal, up to 130)
     static bool   loopTracks   = false;
     static bool   debugLog     = true;
     static Dictionary<string, string> mappen = new();
@@ -269,11 +269,21 @@ class PaalMuziek
         Console.WriteLine($"[PLAY] {Path.GetFileName(track)}  (toets {toetsCode})");
 
         try {
-            var args = $"-o {outputDriver} -a {audioDevice} -f {volume} --resync-limit -1";
-            if (loopTracks) args += " --loop -1";
+            // Handle mpv volume scaling (mpg123 scale max 32768 vs mpv max ~130)
+            int mpvVolume = volume > 130 ? 100 : volume;
+
+            var args = $"--no-video --really-quiet --volume={mpvVolume}";
+            
+            if (outputDriver == "alsa" && !string.IsNullOrWhiteSpace(audioDevice)) {
+                args += $" --audio-device=alsa/{audioDevice}";
+            } else if (outputDriver == "pulse") {
+                args += $" --audio-device=pulse";
+            }
+
+            if (loopTracks) args += " --loop=inf";
             args += $" \"{track}\"";
 
-            Log($"[CMD]  mpg123 {args}");
+            Log($"[CMD]  mpv {args}");
 
             // Kill previous process for this key if it exists
             lock (actieveSpelers) {
@@ -284,16 +294,15 @@ class PaalMuziek
             }
 
             var p = new Process();
-            p.StartInfo.FileName               = "mpg123";
+            p.StartInfo.FileName               = "mpv";
             p.StartInfo.Arguments              = args;
             p.StartInfo.UseShellExecute        = false;
             p.StartInfo.CreateNoWindow         = true;
-            p.StartInfo.RedirectStandardError  = true;   // capture mpg123 errors
+            p.StartInfo.RedirectStandardError  = true;   // capture mpv errors
 
             p.ErrorDataReceived += (_, e) => {
                 if (string.IsNullOrWhiteSpace(e.Data)) return;
-                if (_metadataLabels.Any(label => e.Data.TrimStart().StartsWith(label))) return;
-                Console.WriteLine($"[mpg123] {e.Data}");
+                Console.WriteLine($"[mpv] {e.Data}");
             };
 
             p.Start();
@@ -307,7 +316,7 @@ class PaalMuziek
             }
 
             if (p.ExitCode != 0 && p.ExitCode != 1 && p.ExitCode != 137) // 137 is SIGKILL
-                Console.WriteLine($"[WARN] mpg123 exitcode {p.ExitCode} voor {Path.GetFileName(track)}");
+                Console.WriteLine($"[WARN] mpv exitcode {p.ExitCode} voor {Path.GetFileName(track)}");
         }
         catch (Exception ex) { Console.WriteLine($"[PLAY] Fout: {ex.Message}"); }
     }
