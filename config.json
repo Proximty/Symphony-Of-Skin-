@@ -1,5 +1,5 @@
 {
-  "devicePath": "/dev/input/event2",
+  "devicePath": "/dev/input/by-id/usb-Arduino_LLC_Arduino_Leonardo_HIDFG-if02-event-kbd",
   "musicBasePath": "/home/admin/Symphony-Of-Skin-/muziek",
   "audioDevice": "default",
   "outputDriver": "",

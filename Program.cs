@@ -19,8 +19,7 @@ class PaalMuziek
     static bool   debugLog     = true;
     static Dictionary<string, string> mappen = new();
 
-    static readonly string ConfigPath = Path.Combine(
-        AppContext.BaseDirectory, "config.json");
+    static readonly string ConfigPath = "/home/admin/Symphony-Of-Skin-/config.json";
 
     // ── State ─────────────────────────────────────────────────────────────────
     static Random            rng               = new();
