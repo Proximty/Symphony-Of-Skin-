@@ -192,26 +192,41 @@ class PaalMuziek
     {
         int size = Marshal.SizeOf<InputEvent>();
         byte[] buffer = new byte[size];
-        try {
-            using var fs = new FileStream(devicePath, FileMode.Open,
-                                          FileAccess.Read, FileShare.ReadWrite);
-            while (true) {
-                if (fs.Read(buffer, 0, size) < size) continue;
 
-                GCHandle handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
-                InputEvent ev = Marshal.PtrToStructure<InputEvent>(handle.AddrOfPinnedObject());
-                handle.Free();
+        while (true) {
+            string currentDevice = devicePath;
+            Log($"[INPUT] Opening device: {currentDevice}");
+            try {
+                using var fs = new FileStream(currentDevice, FileMode.Open,
+                                              FileAccess.Read, FileShare.ReadWrite);
+                while (true) {
+                    // Restart if devicePath was changed by hot-reload
+                    if (devicePath != currentDevice) {
+                        Console.WriteLine($"[INPUT] Device path changed → {devicePath}. Reopening...");
+                        break;
+                    }
 
-                if (ev.Type == 0x01) { // EV_KEY
-                    int code = (int)ev.Code;   // explicit cast so it matches dict keys
-                    lock (ingedrukteToetsen) {
-                        if      (ev.Value == 1) { ingedrukteToetsen.Add(code);    Log($"[KEY↓] code={code}"); }
-                        else if (ev.Value == 0) { ingedrukteToetsen.Remove(code); Log($"[KEY↑] code={code}"); }
+                    if (fs.Read(buffer, 0, size) < size) continue;
+
+                    GCHandle handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+                    InputEvent ev = Marshal.PtrToStructure<InputEvent>(handle.AddrOfPinnedObject());
+                    handle.Free();
+
+                    if (ev.Type == 0x01) { // EV_KEY
+                        int code = (int)ev.Code;   // explicit cast so it matches dict keys
+                        lock (ingedrukteToetsen) {
+                            if      (ev.Value == 1) { ingedrukteToetsen.Add(code);    Log($"[KEY↓] code={code}"); }
+                            else if (ev.Value == 0) { ingedrukteToetsen.Remove(code); Log($"[KEY↑] code={code}"); }
+                        }
                     }
                 }
             }
+            catch (Exception ex) {
+                Console.WriteLine($"[INPUT] Fout bij {currentDevice}: {ex.Message}");
+                Console.WriteLine($"[INPUT] Opnieuw proberen in 3s...");
+                System.Threading.Thread.Sleep(3000);
+            }
         }
-        catch (Exception ex) { Console.WriteLine($"[INPUT] Fout: {ex.Message}"); }
     }
 
     // ── Track picker ──────────────────────────────────────────────────────────
