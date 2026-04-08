@@ -130,8 +130,8 @@ class PaalMuziek
                 // keep existing defaults
                 if (mappen.Count == 0)
                     mappen = new() {
-                        { "103", "2000s" }, { "106", "2010s" }, { "105", "Anime" },
-                        { "108", "EDM"   }, { "57",  "Game"  }, { "17",  "Pop"   }, { "103,108", "Secret" }
+                        { "103", "2000s" }, { "108", "2010s" }, { "105", "Anime" },
+                        { "106", "EDM"   }, { "57",  "Game"  }, { "17",  "Pop"   }, { "103,108", "Secret" }
                     };
                 return;
             }
