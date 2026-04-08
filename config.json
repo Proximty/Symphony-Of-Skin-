@@ -1,9 +1,9 @@
 {
-  "devicePath": "/dev/input/event6",
+  "devicePath": "/dev/input/event2",
   "musicBasePath": "/home/admin/Symphony-Of-Skin-/muziek",
   "audioDevice": "default",
-  "outputDriver": "alsa",
-  "volume": 10000,
+  "outputDriver": "",
+  "volume": 100,
   "loopTracks": false,
   "debugLogging": true,
   "_comment_keyCodes": "Makey Makey default Linux key codes: UP=103, DOWN=108, LEFT=105, RIGHT=106, SPACE=57, CLICK(w)=17. Run 'sudo evtest /dev/input/event2' to verify your actual codes.",
