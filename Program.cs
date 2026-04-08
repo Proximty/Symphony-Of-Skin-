@@ -43,7 +43,7 @@ class PaalMuziek
 
         while (!File.Exists(devicePath)) {
             Console.WriteLine($"[INIT] USB Makey-Makey nog niet gevonden op {devicePath}. Wachten...");
-            await Task.Delay(2000);
+            await Task.Delay(5000);
         }
         
         if (!Directory.Exists(basisPad)) {
